@@ -18,9 +18,12 @@ export default defineManifest({
     'sidePanel',
     'contentSettings',
   ],
+  host_permissions: [
+    'https://*.saramin.co.kr/*',
+  ],
   content_scripts: [{
-    js: ['src/content/main.tsx'],
-    matches: ['https://*/*'],
+    js: ['src/content/saramin.ts'],
+    matches: ['https://*.saramin.co.kr/*'],
   }],
   side_panel: {
     default_path: 'src/sidepanel/index.html',
