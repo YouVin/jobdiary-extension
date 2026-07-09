@@ -39,7 +39,7 @@ interface ScrapedApplication {
 ```
 
 ## 셀렉터 요약 (상세는 SELECTORS.md)
-- **사람인**: 컨테이너 `.row._apply_list`, 회사명 `data-company_nm`, 공고명 `data-rec-division`, 지원일 `.col_date`, 상태 `.txt_status`
+- **사람인**: 컨테이너 `.row._apply_list`, 회사명 `data-company_nm`, 공고명 `data-rec_division`, 지원일 `.col_date`, 상태 `.txt_status`
 - **잡코리아**: 회사명 `data-memname`, 공고명 `data-gititle`, 지원일 `data-applydate`, 상태 `.apply-status .item.status`
 - **원티드**: 부분매칭 필수 — 회사명 `[class*="company_name"]`, 공고명 `[class*="position"]`, 지원일 `[class*="create_time"]`, 상태 `[class*="status"]`
 
