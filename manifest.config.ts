@@ -20,10 +20,18 @@ export default defineManifest({
   ],
   host_permissions: [
     'https://*.saramin.co.kr/*',
+    'https://www.jobkorea.co.kr/User/*',
+    'https://jobkorea.co.kr/User/*',
   ],
   content_scripts: [{
     js: ['src/content/saramin.ts'],
     matches: ['https://*.saramin.co.kr/*'],
+  }, {
+    js: ['src/content/jobkorea.ts'],
+    matches: [
+      'https://www.jobkorea.co.kr/User/*',
+      'https://jobkorea.co.kr/User/*',
+    ],
   }],
   side_panel: {
     default_path: 'src/sidepanel/index.html',
