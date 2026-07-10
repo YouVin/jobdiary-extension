@@ -76,28 +76,36 @@ document.querySelectorAll('.row._apply_list').forEach(row => {
 지원 목록의 각 <tr> (테이블 행)
 ```
 
+### DOM 검증 노트 (실물 HTML 분석 결과, 최초 문서 대비 정정)
+- **버튼 class로 필터하면 안 됨**: 지원취소한 건은 `.devBtnDel`, 진행중인 건은 `.devBtnCancel`(+`.devBtnOddInfo`)을 쓴다. 특정 class로 골라내면 케이스가 누락된다. 대신 **`[data-applydate]` 등 data 속성 존재 여부로 필터**한다. 두 버튼 모두 `memname`/`gititle`/`applydate`/`idx` data 속성을 동일하게 가진다.
+- **빈 `<tr></tr>`가 데이터 행 사이에 존재**: data 속성 기반 필터를 쓰면 자연히 스킵된다.
+- **지원일은 텍스트보다 `data-applydate`가 안정적**: `.item.date` 텍스트는 "2026.06.13 00:43"처럼 시분이 있는 것도 있고 "2026.06.01"처럼 없는 것도 있어 들쭉날쭉하다. `data-applydate`는 항상 14자리 "20260601235538"(YYYYMMDDHHmmss) 풀 포맷이므로 이걸 파싱해 `YYYY.MM.DD HH:mm`으로 변환해 쓴다.
+- **회사명 원본 데이터가 깨진 사례 있음**: 예) `data-memname="아타드㈜(ATAD Corp."` 처럼 여는 괄호만 있고 닫는 괄호가 없는 경우가 있다. 잡코리아 원본 DB 이슈로 우리가 고칠 수 없으니 원문 그대로 저장한다.
+
 ### 셀렉터
 | 데이터 | 셀렉터 | 비고 |
 |--------|--------|------|
-| 회사명 | `.company a` 텍스트 또는 `[data-memname]` | "㈜플레이웍스" |
-| 공고명 | `.description a` 텍스트 또는 `[data-gititle]` | data-gititle이 더 깔끔(마감일 없음) |
-| 지원일 | `.apply-status .item.date` 또는 `[data-applydate]` | data는 "20260601235538" 형식 |
+| 회사명 | `[data-memname]` | "㈜플레이웍스". 드물게 원본 데이터 자체가 깨져 있음(위 노트 참고) |
+| 공고명 | `[data-gititle]` | 마감일 없이 깔끔한 버전 |
+| 지원일 | `[data-applydate]` | "20260601235538"(YYYYMMDDHHmmss) 고정 포맷. `.item.date` 텍스트는 시분 유무가 들쭉날쭉해 비권장 |
 | 상태 | `.apply-status .item.status` 텍스트 | "지원취소", "지원완료" 등 |
 | 진행상태 | `.apply-progress .status` 텍스트 | "진행중" 등 |
 | 열람여부 | `.reading .read-not` | "미열람" |
-| 고유ID | `[data-idx]` (내역삭제 버튼) | 중복 방지 |
+| 고유ID | `[data-idx]` | 중복 방지. data 속성을 가진 버튼(`.devBtnDel` 또는 `.devBtnCancel`)에서 읽음 |
 
 ### 예시 코드
 ```javascript
 document.querySelectorAll('tr').forEach(row => {
-  const delBtn = row.querySelector('.devBtnDel');
-  if (!delBtn) return; // 지원 행이 아니면 스킵
+  // 버튼 class(.devBtnDel/.devBtnCancel)로 필터하지 않는다 — 상태별로 class가 다르다.
+  // data-applydate 존재 여부로 필터하면 지원취소/진행중 행 모두 잡히고, 빈 <tr>도 자연히 스킵된다.
+  const dataBtn = row.querySelector('[data-applydate]');
+  if (!dataBtn) return; // 지원 행이 아니면 스킵
 
-  const company = delBtn.dataset.memname;
-  const position = delBtn.dataset.gititle;  // 깔끔한 버전
-  const appliedAtRaw = delBtn.dataset.applydate; // "20260601235538"
+  const company = dataBtn.dataset.memname; // 드물게 괄호 등 원본 데이터가 깨져 있을 수 있음
+  const position = dataBtn.dataset.gititle;  // 깔끔한 버전
+  const appliedAtRaw = dataBtn.dataset.applydate; // "20260601235538" (YYYYMMDDHHmmss)
   const status = row.querySelector('.apply-status .item.status')?.textContent?.trim();
-  const externalId = delBtn.dataset.idx;
+  const externalId = dataBtn.dataset.idx;
 });
 ```
 
