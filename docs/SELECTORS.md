@@ -31,13 +31,13 @@ interface ScrapedApplication {
 
 ### 지원현황 페이지
 
-```
+```text
 https://www.saramin.co.kr/zf_user/mypage/apply-status (예상)
 ```
 
 ### 컨테이너 (지원 1건)
 
-```
+```text
 .row._apply_list
 ```
 
@@ -72,13 +72,13 @@ document.querySelectorAll(".row._apply_list").forEach((row) => {
 
 ### 지원현황 페이지
 
-```
+```text
 마이페이지 → 입사지원현황
 ```
 
 ### 컨테이너 (지원 1건)
 
-```
+```text
 지원 목록의 각 <tr> (테이블 행)
 ```
 
@@ -128,13 +128,13 @@ document.querySelectorAll("tr").forEach((row) => {
 
 ### 지원현황 페이지
 
-```
+```text
 마이페이지 → 지원 현황
 ```
 
 ### 컨테이너 (지원 1건)
 
-```
+```text
 li[class*="table_tr"]   (해시 무시하고 부분매칭)
 ```
 
