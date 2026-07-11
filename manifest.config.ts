@@ -22,6 +22,8 @@ export default defineManifest({
     'https://*.saramin.co.kr/*',
     'https://www.jobkorea.co.kr/User/*',
     'https://jobkorea.co.kr/User/*',
+    'https://www.wanted.co.kr/status/*',
+    'https://wanted.co.kr/status/*',
   ],
   content_scripts: [{
     js: ['src/content/saramin.ts'],
@@ -31,6 +33,12 @@ export default defineManifest({
     matches: [
       'https://www.jobkorea.co.kr/User/*',
       'https://jobkorea.co.kr/User/*',
+    ],
+  }, {
+    js: ['src/content/wanted.ts'],
+    matches: [
+      'https://www.wanted.co.kr/status/*',
+      'https://wanted.co.kr/status/*',
     ],
   }],
   side_panel: {

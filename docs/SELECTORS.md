@@ -129,7 +129,7 @@ document.querySelectorAll("tr").forEach((row) => {
 ### 지원현황 페이지
 
 ```text
-마이페이지 → 지원 현황
+https://www.wanted.co.kr/status/applications/applied (쿼리 파라미터로 필터/페이지)
 ```
 
 ### 컨테이너 (지원 1건)
@@ -138,14 +138,22 @@ document.querySelectorAll("tr").forEach((row) => {
 li[class*="table_tr"]   (해시 무시하고 부분매칭)
 ```
 
+### DOM 검증 노트 (실물 HTML 분석 결과, 최초 문서 대비 정정/보완)
+
+- **`li` 명시로 헤더 행 자동 제외**: 헤더도 `table_tr` class를 갖지만 `<div class="table-header ...">`로 렌더된다. 컨테이너 셀렉터를 `li[class*="table_tr"]`로 태그까지 명시하면 헤더 `<div>`는 매칭되지 않고 데이터 행(`<li>`)만 잡힌다.
+- **externalId(고유ID) 없음**: `<li>` 안에 지원건을 식별할 data 속성이나 상세 링크가 없다. 회사 로고 이미지 URL이 있긴 하지만 회사 단위로만 구분되고 지원건 단위 식별에는 쓸 수 없다. 원티드는 `externalId`를 빈 값(`undefined`)으로 둔다.
+- **React SPA 렌더링 주의**: class에 `wds-` 접두사와 해시 접미사가 붙은 것으로 보아 클라이언트 사이드 렌더링이다. 페이지 로드 직후에는 목록이 비어 있을 수 있어, content script가 즉시 파싱하면 0건이 잡힐 위험이 있다. 실제 파싱 트리거 시점(버튼 클릭 등) 또는 목록 렌더 완료 감지가 필요한지 검증 시 확인해야 한다.
+- **지원일 포맷 정규화 필요**: "2026. 7. 11"처럼 마침표+공백 구분이고 월/일이 한 자리로 나올 수 있다. 공백 제거 + 0 채움으로 "2026.07.11" 형태로 정규화해서 쓴다.
+
 ### 셀렉터 (부분매칭 필수)
 
-| 데이터 | 셀렉터                           | 비고                  |
-| ------ | -------------------------------- | --------------------- |
-| 회사명 | `[class*="company_name"]` 텍스트 | "무론"                |
-| 공고명 | `[class*="position"]` 텍스트     | "프론트엔드 개발자"   |
-| 지원일 | `[class*="create_time"]` 텍스트  | "2026. 3. 31"         |
-| 상태   | `[class*="status"]` 텍스트       | "불합격", "진행중" 등 |
+| 데이터 | 셀렉터                           | 비고                                                                 |
+| ------ | -------------------------------- | -------------------------------------------------------------------- |
+| 회사명 | `[class*="company_name"]` 텍스트 | "무론"                                                               |
+| 공고명 | `[class*="position"]` 텍스트     | "프론트엔드 개발자"                                                  |
+| 지원일 | `[class*="create_time"]` 텍스트  | "2026. 7. 11" (정규화: "2026.07.11")                                 |
+| 상태   | `[class*="status"]` 텍스트       | "불합격", "진행중" 등                                                |
+| 고유ID | 없음                             | `<li>` 안에 지원건 식별 data 속성/링크 없음. `externalId` 빈 값 처리 |
 
 ### ⚠️ 주의: 해시 클래스
 
@@ -154,6 +162,7 @@ li[class*="table_tr"]   (해시 무시하고 부분매칭)
 ### 예시 코드
 
 ```javascript
+// React SPA라 페이지 로드 직후엔 목록이 비어 있을 수 있음 — 파싱 시점 확인 필요
 document.querySelectorAll('li[class*="table_tr"]').forEach((row) => {
   const company = row
     .querySelector('[class*="company_name"]')
@@ -161,10 +170,11 @@ document.querySelectorAll('li[class*="table_tr"]').forEach((row) => {
   const position = row
     .querySelector('[class*="position"]')
     ?.textContent?.trim();
-  const appliedAt = row
+  const appliedAtRaw = row
     .querySelector('[class*="create_time"]')
-    ?.textContent?.trim();
+    ?.textContent?.trim(); // "2026. 7. 11" → 정규화 필요 ("2026.07.11")
   const status = row.querySelector('[class*="status"]')?.textContent?.trim();
+  const externalId = undefined; // 원티드는 지원건 고유 ID가 없음
 });
 ```
 
