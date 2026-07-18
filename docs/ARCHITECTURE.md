@@ -20,11 +20,13 @@ popup              아이콘 클릭 시 뜨는 UI (React)
    ScrapedApplication[] 생성
       ↓ chrome.runtime.sendMessage
    service worker
-      ↓ 상태 매핑 + 중복 제거 + 정규화
+      ↓ 상태 매핑 + 날짜 정규화 (Application 변환)
    chrome.storage.local 저장
       ↓
    [popup] 수집 결과 표시 / [웹앱] 데이터 전달
 ```
+
+> 최종 중복 판별 + 저장은 웹앱의 `addApplicationsFromExtension`이 담당한다 (상세: [INTEGRATION.md](./INTEGRATION.md)).
 
 ## 3. 폴더 구조
 
@@ -70,10 +72,10 @@ jobdiary-extension/
 |------|------|
 | content/{site}.ts | 해당 사이트에서 파싱 실행, 버튼 삽입 |
 | content/selectors/ | 사이트별 셀렉터 상수 (깨지면 여기만 수정) |
-| background/index.ts | 메시지 수신, 매핑/중복제거, 저장 |
+| background/index.ts | 메시지 수신, 상태 매핑 + 날짜 정규화(Application 변환), chrome.storage 저장 |
 | popup/App.tsx | 수집 현황 표시, 웹앱 열기 |
-| lib/statusMapping.ts | "지원완료" → applied 등 |
-| lib/dateNormalize.ts | 각 사이트 날짜 → ISO |
+| lib/statusMapping.ts | "지원완료" → applied, "취소" 포함 → canceled 등 |
+| lib/dateNormalize.ts | 각 사이트 날짜 → 자정 기준 ISO (시분 버림) |
 | lib/storage.ts | chrome.storage 래퍼 |
 
 ## 5. MV3 주의사항

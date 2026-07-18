@@ -63,7 +63,7 @@
 
 ## 7. 데이터 정합성
 
-- **중복 방지**: 각 사이트 고유 ID(externalId) 저장 → 재수집 시 스킵
+- **중복 방지**: platform + externalId 조합으로 판별 (원티드는 externalId가 없어 platform + company + position + appliedAt 조합). 판별/저장은 웹앱의 addApplicationsFromExtension이 처리 (상세: [INTEGRATION.md](./INTEGRATION.md))
 - **상태 매핑 실패**: applied로 기본 처리, 유저가 웹앱에서 수정
 - **파싱 실패 대비**: 수동 저장 버튼 항상 제공
 
