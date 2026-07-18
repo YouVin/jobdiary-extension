@@ -32,7 +32,7 @@
 | "가져오기" 버튼 삽입 | 페이지에 수집 버튼 표시 | 🔴 필수 |
 | 지원 목록 파싱 | 회사/공고/상태/지원일 추출 | 🔴 필수 |
 | 상태 매핑 | 사이트 원문 → 취준일기 Status | 🔴 필수 |
-| 중복 제거 | externalId로 이미 수집한 건 스킵 | 🟡 중간 |
+| 중복 제거 | platform+externalId 조합으로 판별(원티드는 platform+company+position+appliedAt). 판별·저장은 웹앱 addApplicationsFromExtension 책임 (상세: [INTEGRATION.md](./INTEGRATION.md)) | 🟡 중간 |
 | 웹앱 전달 | 수집 데이터를 취준일기로 | 🔴 필수 |
 | popup UI | 아이콘 클릭 시 요약/이동 | 🟡 중간 |
 
@@ -63,7 +63,7 @@
 
 ## 7. 데이터 정합성
 
-- **중복 방지**: 각 사이트 고유 ID(externalId) 저장 → 재수집 시 스킵
+- **중복 방지**: platform + externalId 조합으로 판별 (원티드는 externalId가 없어 platform + company + position + appliedAt 조합). 판별/저장은 웹앱의 addApplicationsFromExtension이 처리 (상세: [INTEGRATION.md](./INTEGRATION.md))
 - **상태 매핑 실패**: applied로 기본 처리, 유저가 웹앱에서 수정
 - **파싱 실패 대비**: 수동 저장 버튼 항상 제공
 

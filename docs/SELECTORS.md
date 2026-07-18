@@ -21,7 +21,7 @@ interface ScrapedApplication {
 }
 ```
 
-수집한 status 원문은 웹앱의 Status 타입으로 매핑한다 (STATUS_MAPPING 참고).
+수집한 status 원문은 웹앱의 Status 타입으로 매핑한다 (매핑 규칙: [INTEGRATION.md](./INTEGRATION.md) 참고).
 
 ---
 
@@ -180,36 +180,9 @@ document.querySelectorAll('li[class*="table_tr"]').forEach((row) => {
 
 ---
 
-## 상태 매핑 (STATUS_MAPPING)
+## 상태 매핑 / 날짜 정규화
 
-각 사이트의 상태 원문 → 취준일기 Status 타입으로 변환.
-
-| 사이트 원문        | 취준일기 Status        |
-| ------------------ | ---------------------- |
-| 지원완료           | applied                |
-| 지원취소           | (제외 or applied 유지) |
-| 서류통과, 서류합격 | screening              |
-| 면접, 면접예정     | interview              |
-| 면접완료           | interviewed            |
-| 최종합격, 합격     | offer                  |
-| 불합격, 탈락       | rejected               |
-| 진행중             | applied (기본)         |
-
-> 매핑 안 되는 원문은 일단 applied로 두고, 유저가 웹앱에서 수정.
-
----
-
-## 날짜 정규화
-
-각 사이트 날짜 형식이 다름 → ISO 형식으로 통일.
-
-| 사이트   | 원문 형식               | 변환  |
-| -------- | ----------------------- | ----- |
-| 사람인   | "2026.06.09 20:27"      | → ISO |
-| 잡코리아 | "20260601235538" (data) | → ISO |
-| 원티드   | "2026. 3. 31"           | → ISO |
-
-utils에 각 사이트별 파서 함수를 둔다.
+상태 원문 → Status 매핑 규칙, 날짜 → ISO 변환 규칙은 [INTEGRATION.md](./INTEGRATION.md)를 참조. (이 문서는 셀렉터 정보에 집중하고, 매핑/변환 규칙은 INTEGRATION.md를 단일 진실로 둔다.)
 
 ---
 
