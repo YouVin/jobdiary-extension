@@ -20,13 +20,12 @@ popup              아이콘 클릭 시 뜨는 UI (React)
    ScrapedApplication[] 생성
       ↓ chrome.runtime.sendMessage
    service worker
-      ↓ 상태 매핑 + 날짜 정규화 (Application 변환)
-   chrome.storage.local 저장
+      ↓ chrome.storage.local 저장
       ↓
    [popup] 수집 결과 표시 / [웹앱] 데이터 전달
 ```
 
-> 최종 중복 판별 + 저장은 웹앱의 `addApplicationsFromExtension`이 담당한다 (상세: [INTEGRATION.md](./INTEGRATION.md)).
+> 상태 매핑 + 날짜 정규화(Application 변환)를 저장 시점에 할지 전달 시점에 할지는 미확정이다. 변환은 한 곳에서만 수행한다는 원칙만 확정돼 있고, 정확한 위치는 실제 연동 구현(E-5)에서 정한다. 익스텐션은 웹앱 함수를 직접 호출할 수 없어 메시지 전달 경로를 거치며, 최종 중복 판별 + 저장은 웹앱의 `addApplicationsFromExtension`이 담당한다 (상세: [INTEGRATION.md](./INTEGRATION.md)).
 
 ## 3. 폴더 구조
 
@@ -72,7 +71,7 @@ jobdiary-extension/
 |------|------|
 | content/{site}.ts | 해당 사이트에서 파싱 실행, 버튼 삽입 |
 | content/selectors/ | 사이트별 셀렉터 상수 (깨지면 여기만 수정) |
-| background/index.ts | 메시지 수신, 상태 매핑 + 날짜 정규화(Application 변환), chrome.storage 저장 |
+| background/index.ts | 메시지 수신, chrome.storage 저장 (Application 변환을 이 단계에서 할지는 미확정 — INTEGRATION.md 참고) |
 | popup/App.tsx | 수집 현황 표시, 웹앱 열기 |
 | lib/statusMapping.ts | "지원완료" → applied, "취소" 포함 → canceled 등 |
 | lib/dateNormalize.ts | 각 사이트 날짜 → 자정 기준 ISO (시분 버림) |

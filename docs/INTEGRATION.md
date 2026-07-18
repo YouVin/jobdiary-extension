@@ -2,7 +2,7 @@
 
 > **이 문서는 "보내는 쪽(익스텐션)" 변환 로직을 정의한다.** "받는 쪽" 계약(`Application` 타입, `addApplicationsFromExtension` 시그니처, 최종 중복 판정 로직)의 진실은 웹앱 레포의 `docs/INTEGRATION.md`이며, 이 문서 내용이 웹앱 문서와 어긋나면 웹앱 문서를 따른다.
 
-익스텐션이 수집한 데이터를 취준일기 웹앱으로 전달하기 위해 필요한 변환(어댑터) 로직과, 전달 방식 후보를 정리한다.
+익스텐션이 수집한 데이터를 취준일기 웹앱으로 전달하기 위해 필요한 변환(어댑터) 로직과, 구조상 확정된 전달 제약, 전달 방식 후보를 정리한다.
 
 ---
 
@@ -71,41 +71,51 @@ function convertToApplication(
 }
 ```
 
-전달 시:
-
-```typescript
-const apps = scraped.map(convertToApplication);
-addApplicationsFromExtension(apps); // 웹앱 쪽 API. 중복 판별 + 저장은 웹앱 책임
-```
+> `apps`가 웹앱에 닿기까지의 구체적 경로(직접 호출이 불가능한 이유 포함)는 아래 "전달 제약"과 "전달 방식" 참고.
 
 > `Application` 타입 정의와 `addApplicationsFromExtension` 시그니처의 최종 진실은 웹앱 레포 `docs/INTEGRATION.md`다.
 
 ---
 
+## 전달 제약 (확정)
+
+아래는 미확정이 아니라 실행 컨텍스트 구조상 확정된 제약이다.
+
+- content script는 웹앱 페이지에 주입되더라도 **격리된 별도 JS 실행 컨텍스트(isolated world)**에서 돈다. 웹앱 페이지의 main world에 정의된 `addApplicationsFromExtension` 같은 함수를 **직접 호출할 수 없다.**
+- 따라서 전달은 반드시 **메시지 전달 경로**를 거친다: 익스텐션이 `window.postMessage` 또는 DOM 커스텀 이벤트(`CustomEvent`)로 변환된 데이터를 웹앱 페이지에 보내고, 웹앱이 그 message/event 리스너 **안에서** `addApplicationsFromExtension`을 호출한다.
+- 이 문서에서 "`addApplicationsFromExtension` 호출"이라고 쓴 부분은 전부 이 경로를 거친 뒤 **웹앱 쪽 리스너가** 호출한다는 뜻이며, 익스텐션이 직접 호출한다는 뜻이 아니다.
+
+---
+
 ## 전달 방식 (미확정)
 
-> ⚠️ 아직 실제 연동 구현으로 검증되지 않았다. **전달 방식은 실제 연동 구현(E-5) 시 확정한다.** 아래는 후보일 뿐 어느 쪽도 확정된 것이 아니다.
+> ⚠️ 아직 실제 연동 구현으로 검증되지 않았다. 아래 후보는 위 "전달 제약"을 만족하는 안들이며, 다음 사항은 실제 연동 구현(E-5)에서 확정한다:
+>
+> - chrome.storage.local에 **원본 `ScrapedApplication`을 저장하고 전달 시점에 변환**할지, **변환된 `Application`을 저장**할지. (변환은 한 곳에서만 수행한다는 원칙만 확정, 정확한 위치는 E-5에서 결정)
+> - 구체적 전달 경로(`postMessage` vs DOM 커스텀 이벤트 vs `chrome.runtime.sendMessage` 조합)와 웹앱 수신 지점의 정확한 위치
 
 ### 후보 1단계: localStorage 공유 방식 (MVP)
 
-웹앱이 아직 localStorage 기반이므로, 익스텐션도 이에 맞추는 안.
+웹앱이 아직 localStorage 기반이므로, 익스텐션도 이에 맞추는 안. 두 방식 모두 "전달 제약"에 따라 메시지 전달 경로를 거친다 — content script가 웹앱 함수를 직접 부르지 않는다.
 
-#### 방식 A: 웹앱 페이지에 직접 주입
+#### 방식 A: window.postMessage
 
 ```text
-1. 익스텐션이 수집 → chrome.storage.local에 임시 저장
+1. 익스텐션이 수집 → chrome.storage.local에 저장 (원본/변환본 여부는 E-5 확정)
 2. popup에서 "취준일기 열기" 클릭 → 웹앱 탭 열림/포커스
-3. 익스텐션이 웹앱 페이지(jobdiary.vercel.app)에도 content script 주입
-4. 그 content script가 chrome.storage의 수집 데이터를 읽어
-   convertToApplication으로 변환한 뒤 addApplicationsFromExtension 호출
-5. 웹앱이 새로고침/감지해서 칸반에 반영
+3. 익스텐션이 웹앱 페이지(jobdiary.vercel.app)에 content script 주입
+4. content script가 저장된 데이터를 준비해 window.postMessage로 웹앱 페이지에 전송
+5. 웹앱이 message 이벤트 리스너 안에서 addApplicationsFromExtension 호출
+6. 웹앱이 칸반에 반영
 ```
 
-#### 방식 B: postMessage 통신
+#### 방식 B: DOM 커스텀 이벤트
 
 ```text
-1. 익스텐션 content script가 웹앱 페이지에 window.postMessage로 변환된 데이터 전송
-2. 웹앱이 message 이벤트 리스너로 받아 addApplicationsFromExtension 호출
+1~3. 방식 A와 동일
+4. content script가 저장된 데이터를 담은 CustomEvent를 document에 dispatch
+5. 웹앱이 해당 이벤트 리스너 안에서 addApplicationsFromExtension 호출
+6. 웹앱이 칸반에 반영
 ```
 
 ### 후보 2단계: 서버 연동 방식 (로그인 후)
