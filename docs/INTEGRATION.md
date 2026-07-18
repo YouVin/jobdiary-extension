@@ -51,10 +51,12 @@
 
 ## 데이터 변환 (ScrapedApplication → Application)
 
-역할 분리:
+역할 분리 (확정 — E-5에서도 바뀌지 않는다):
 
-- **익스텐션**: `ScrapedApplication[]`을 `Application` 형식으로 변환한다(어댑터). `id`, `updatedAt`은 웹앱이 채우므로 익스텐션은 만들지 않는다.
-- **웹앱**: 변환된 배열을 `addApplicationsFromExtension(apps)`로 받아 중복 판별과 저장까지 전부 처리한다.
+- **익스텐션**: `ScrapedApplication[]`을 `Application` 형식으로 변환한다(어댑터). **변환은 오직 익스텐션에서만, 한 곳에서만 일어나며 이중 변환은 없다.** `id`, `updatedAt`은 웹앱이 채우므로 익스텐션은 만들지 않는다.
+- **웹앱**: 이미 변환이 끝난 `Application[]`을 `addApplicationsFromExtension(apps)`로 받아 중복 판별과 저장만 수행한다. **웹앱은 변환하지 않는다.**
+
+즉 웹앱 경계를 넘어가는 payload는 항상 변환이 끝난 `Application` 형식이다. 이 경계 규칙과 변환 주체는 미확정이 아니다 — E-5에서 정하는 것은 저장 표현과 전송 경로의 세부일 뿐이다 (아래 "전달 방식" 참고).
 
 ```typescript
 function convertToApplication(
@@ -84,15 +86,16 @@ function convertToApplication(
 - content script는 웹앱 페이지에 주입되더라도 **격리된 별도 JS 실행 컨텍스트(isolated world)**에서 돈다. 웹앱 페이지의 main world에 정의된 `addApplicationsFromExtension` 같은 함수를 **직접 호출할 수 없다.**
 - 따라서 전달은 반드시 **메시지 전달 경로**를 거친다: 익스텐션이 `window.postMessage` 또는 DOM 커스텀 이벤트(`CustomEvent`)로 변환된 데이터를 웹앱 페이지에 보내고, 웹앱이 그 message/event 리스너 **안에서** `addApplicationsFromExtension`을 호출한다.
 - 이 문서에서 "`addApplicationsFromExtension` 호출"이라고 쓴 부분은 전부 이 경로를 거친 뒤 **웹앱 쪽 리스너가** 호출한다는 뜻이며, 익스텐션이 직접 호출한다는 뜻이 아니다.
+- 메시지로 건너가는 데이터는 **익스텐션이 이미 변환을 마친 `Application` 형식**이다 (변환 주체: 위 "데이터 변환" 참고). 웹앱 쪽 리스너는 변환하지 않고 `addApplicationsFromExtension`으로 판별·저장만 한다.
 
 ---
 
 ## 전달 방식 (미확정)
 
-> ⚠️ 아직 실제 연동 구현으로 검증되지 않았다. 아래 후보는 위 "전달 제약"을 만족하는 안들이며, 다음 사항은 실제 연동 구현(E-5)에서 확정한다:
+> ⚠️ 아직 실제 연동 구현으로 검증되지 않았다. 아래 후보는 위 "전달 제약"을 만족하는 안들이다. **변환 주체(익스텐션)와 웹앱 경계 payload 형식(변환 완료된 `Application`)은 이미 확정**이며 (위 "데이터 변환" 참고), 실제 연동 구현(E-5)에서 정하는 것은 다음 두 가지뿐이다:
 >
-> - chrome.storage.local에 **원본 `ScrapedApplication`을 저장하고 전달 시점에 변환**할지, **변환된 `Application`을 저장**할지. (변환은 한 곳에서만 수행한다는 원칙만 확정, 정확한 위치는 E-5에서 결정)
-> - 구체적 전달 경로(`postMessage` vs DOM 커스텀 이벤트 vs `chrome.runtime.sendMessage` 조합)와 웹앱 수신 지점의 정확한 위치
+> - **저장 표현**: chrome.storage.local에 원본 `ScrapedApplication`을 저장해뒀다가 웹앱 전송 직전에 변환할지, 변환된 `Application`을 미리 저장해둘지. 어느 쪽이든 **변환은 익스텐션이 수행**하며 웹앱으로 나가는 payload는 항상 변환 완료 상태다.
+> - **전송 경로**: 구체적 전달 경로(`postMessage` vs DOM 커스텀 이벤트 vs `chrome.runtime.sendMessage` 조합)와 웹앱 수신 지점의 정확한 위치.
 
 ### 후보 1단계: localStorage 공유 방식 (MVP)
 
@@ -101,11 +104,13 @@ function convertToApplication(
 #### 방식 A: window.postMessage
 
 ```text
-1. 익스텐션이 수집 → chrome.storage.local에 저장 (원본/변환본 여부는 E-5 확정)
+1. 익스텐션이 수집 → chrome.storage.local에 저장 (원본 ScrapedApplication으로 저장할지,
+   변환된 Application으로 저장할지는 E-5 확정 — 어느 쪽이든 변환은 익스텐션이 수행)
 2. popup에서 "취준일기 열기" 클릭 → 웹앱 탭 열림/포커스
 3. 익스텐션이 웹앱 페이지(jobdiary.vercel.app)에 content script 주입
-4. content script가 저장된 데이터를 준비해 window.postMessage로 웹앱 페이지에 전송
-5. 웹앱이 message 이벤트 리스너 안에서 addApplicationsFromExtension 호출
+4. content script가 저장된 데이터를 (변환 전이면 convertToApplication으로 변환한 뒤)
+   window.postMessage로 웹앱 페이지에 전송
+5. 웹앱이 message 이벤트 리스너 안에서 addApplicationsFromExtension 호출 (판별·저장만, 변환 없음)
 6. 웹앱이 칸반에 반영
 ```
 
@@ -113,8 +118,9 @@ function convertToApplication(
 
 ```text
 1~3. 방식 A와 동일
-4. content script가 저장된 데이터를 담은 CustomEvent를 document에 dispatch
-5. 웹앱이 해당 이벤트 리스너 안에서 addApplicationsFromExtension 호출
+4. content script가 저장된 데이터를 (변환 전이면 convertToApplication으로 변환한 뒤)
+   CustomEvent에 담아 document에 dispatch
+5. 웹앱이 해당 이벤트 리스너 안에서 addApplicationsFromExtension 호출 (판별·저장만, 변환 없음)
 6. 웹앱이 칸반에 반영
 ```
 
@@ -137,7 +143,7 @@ Supabase 도입 후.
 1. 익스텐션: 사람인 수집 → chrome.storage 저장까지
 2. 익스텐션: convertToApplication 어댑터 구현 (status/날짜 매핑 포함)
 3. 웹앱: addApplicationsFromExtension 수신 로직 구현 (판별 + 저장)
-4. 익스텐션: 웹앱으로 전달 (전달 방식은 E-5에서 확정)
+4. 익스텐션: 웹앱으로 전달 (저장 표현/전송 경로는 E-5에서 확정, 변환은 항상 익스텐션이 사전에 완료)
 5. 실제 연동 테스트 (사람인 → 웹앱 칸반 반영 확인)
 6. 잡코리아, 원티드 확장
 ```
