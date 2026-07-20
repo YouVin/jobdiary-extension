@@ -16,6 +16,7 @@
  * 익스텐션에는 아직 이식하지 않았다. 폰트 통일은 추후 과제 — 지금은 시스템 sans-serif.
  */
 body {
+  margin: 0;
   background-color: var(--background);
   color: var(--foreground);
   font-family:
