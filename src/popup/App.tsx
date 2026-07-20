@@ -5,7 +5,7 @@ export default function App() {
   return (
     <div className="w-[360px] bg-page text-text-primary">
       <header className="flex items-center gap-2 border-b border-card-border bg-card px-4 py-3">
-        <img src="../../public/logo.png" alt="취준일기 로고" className="h-6 w-6 rounded" />
+        <img src="/logo.png" alt="취준일기 로고" className="h-6 w-6 rounded" />
         <h1 className="text-base font-semibold">취준일기</h1>
       </header>
 
