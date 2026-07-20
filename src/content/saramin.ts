@@ -1,6 +1,8 @@
 console.log('[JobDiary] 사람인 파서 로드됨');
 import { SARAMIN_SELECTORS } from './selectors/saramin';
 import type { ScrapedApplication } from '../types/application';
+import { convertToApplication } from '../lib/adapter';
+import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
 
 export function parseSaramin(): ScrapedApplication[] {
   const rows = document.querySelectorAll<HTMLElement>(SARAMIN_SELECTORS.container);
@@ -28,4 +30,13 @@ function logParsedApplications(applications: ScrapedApplication[]): void {
   console.table(applications);
 }
 
-logParsedApplications(parseSaramin());
+chrome.runtime.onMessage.addListener((message: CollectMessage, _sender, sendResponse) => {
+  if (message.type !== COLLECT_MESSAGE_TYPE) return;
+
+  const scraped = parseSaramin();
+  logParsedApplications(scraped);
+
+  const applications = scraped.map(convertToApplication);
+  const response: CollectResponse = { applications, count: applications.length };
+  sendResponse(response);
+});

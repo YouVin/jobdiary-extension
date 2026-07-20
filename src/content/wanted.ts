@@ -1,6 +1,8 @@
 console.log('[JobDiary] 원티드 파서 로드됨');
 import { WANTED_SELECTORS } from './selectors/wanted';
 import type { ScrapedApplication } from '../types/application';
+import { convertToApplication } from '../lib/adapter';
+import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
 
 // "2026. 7. 11" (마침표+공백 구분, 월/일 한 자리 가능) → "2026.07.11" (사람인/잡코리아 포맷과 통일)
 // 형식이 예상과 다르면 원문을 그대로 반환, 값이 없으면 빈 문자열 반환
@@ -42,4 +44,13 @@ function logParsedApplications(applications: ScrapedApplication[]): void {
   console.table(applications);
 }
 
-logParsedApplications(parseWanted());
+chrome.runtime.onMessage.addListener((message: CollectMessage, _sender, sendResponse) => {
+  if (message.type !== COLLECT_MESSAGE_TYPE) return;
+
+  const scraped = parseWanted();
+  logParsedApplications(scraped);
+
+  const applications = scraped.map(convertToApplication);
+  const response: CollectResponse = { applications, count: applications.length };
+  sendResponse(response);
+});
