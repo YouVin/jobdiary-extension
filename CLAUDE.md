@@ -44,7 +44,9 @@ interface ScrapedApplication {
 - **원티드**: 부분매칭 필수 — 회사명 `[class*="company_name"]`, 공고명 `[class*="position"]`, 지원일 `[class*="create_time"]`, 상태 `[class*="status"]`
 
 ## 상태 매핑
-지원완료→applied, 서류통과→screening, 면접→interview, 면접완료→interviewed, 최종합격→offer, 불합격/탈락→rejected. 매핑 실패 시 applied 기본.
+"취소" 포함(부분 일치)→canceled, "불합격"/"탈락"→rejected, 그 외(지원완료/접수 등)→applied(기본값). screening/interview/interviewed/offer는 3개 사이트 모두 원문으로 제공하지 않아 매핑 대상이 아니며, 유저가 웹앱 칸반에서 직접 관리한다. 상세 매핑 테이블은 docs/INTEGRATION.md를 단일 진실로 참조.
+
+부분 일치(.includes) 순서 주의: 더 구체적인 문자열을 먼저 검사해야 오분류를 막는다. 예: "면접완료"는 "면접"을 포함하므로, 향후 interview/interviewed를 매핑 대상에 추가하게 되면 "면접완료"(interviewed)를 "면접"(interview)보다 먼저 검사해야 한다.
 
 ## 코딩 규칙
 - named export, 함수형, TypeScript

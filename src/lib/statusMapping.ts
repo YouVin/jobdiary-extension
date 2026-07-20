@@ -4,6 +4,9 @@ import type { Status } from '@/types/application';
 // "취소"는 부분 일치이며 "불합격"/"탈락"보다 먼저 체크한다 — 원문에 취소 표기와
 // 불합격 표기가 동시에 있을 일은 없지만, 순서상 취소가 우선이다.
 // screening/interview/interviewed/offer는 사이트가 원문으로 제공하지 않아 매핑 대상이 아니다.
+// 확장 시 주의: .includes 부분 일치는 더 구체적인 문자열을 먼저 검사해야 오분류를 막는다.
+// 예: "면접완료"는 "면접"을 포함하므로, 향후 interview/interviewed를 추가하면
+// "면접완료"(interviewed) 분기를 "면접"(interview) 분기보다 먼저 둬야 한다.
 export function mapStatus(raw: string): Status {
   if (raw.includes('취소')) return 'canceled';
   if (raw.includes('불합격') || raw.includes('탈락')) return 'rejected';
