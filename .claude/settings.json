@@ -7,7 +7,9 @@
       "Bash(rm -rf \"src/content/views\")",
       "Bash(rm -f \"src/components/HelloWorld.tsx\")",
       "Bash(npm install *)",
-      "Bash(grep -o \"\\\\.bg-brand{[^}]*}\\\\|\\\\.bg-page{[^}]*}\\\\|\\\\.text-text-primary{[^}]*}\\\\|\\\\.bg-platform-saramin-bg{[^}]*}\\\\|\\\\.text-platform-wanted-text{[^}]*}\\\\|\\\\.bg-platform-jobkorea-bg{[^}]*}\\\\|w-\\\\\\\\\\\\[360px\\\\\\\\\\\\]\" dist/assets/index-*.css)"
+      "Bash(grep -o \"\\\\.bg-brand{[^}]*}\\\\|\\\\.bg-page{[^}]*}\\\\|\\\\.text-text-primary{[^}]*}\\\\|\\\\.bg-platform-saramin-bg{[^}]*}\\\\|\\\\.text-platform-wanted-text{[^}]*}\\\\|\\\\.bg-platform-jobkorea-bg{[^}]*}\\\\|w-\\\\\\\\\\\\[360px\\\\\\\\\\\\]\" dist/assets/index-*.css)",
+      "Bash(npx --yes tsx --version)",
+      "Bash(npx --yes tsx verify-adapter.tmp.ts)"
     ]
   }
 }
