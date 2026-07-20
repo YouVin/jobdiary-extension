@@ -15,7 +15,7 @@ export function Button({ variant = 'primary', className = '', ...props }: Button
   return (
     <button
       type="button"
-      className={`w-full rounded-md px-3 py-2 text-sm font-medium transition-colors ${VARIANT_CLASS[variant]} ${className}`}
+      className={`w-full rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${VARIANT_CLASS[variant]} ${className}`}
       {...props}
     />
   )
