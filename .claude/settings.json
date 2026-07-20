@@ -5,7 +5,8 @@
       "Bash(rm -rf \"src/sidepanel\")",
       "Bash(rm -f \"src/content/main.tsx\")",
       "Bash(rm -rf \"src/content/views\")",
-      "Bash(rm -f \"src/components/HelloWorld.tsx\")"
+      "Bash(rm -f \"src/components/HelloWorld.tsx\")",
+      "Bash(npm install *)"
     ]
   }
 }
