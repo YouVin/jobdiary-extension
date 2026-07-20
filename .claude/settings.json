@@ -9,7 +9,9 @@
       "Bash(npm install *)",
       "Bash(grep -o \"\\\\.bg-brand{[^}]*}\\\\|\\\\.bg-page{[^}]*}\\\\|\\\\.text-text-primary{[^}]*}\\\\|\\\\.bg-platform-saramin-bg{[^}]*}\\\\|\\\\.text-platform-wanted-text{[^}]*}\\\\|\\\\.bg-platform-jobkorea-bg{[^}]*}\\\\|w-\\\\\\\\\\\\[360px\\\\\\\\\\\\]\" dist/assets/index-*.css)",
       "Bash(npx --yes tsx --version)",
-      "Bash(npx --yes tsx verify-adapter.tmp.ts)"
+      "Bash(npx --yes tsx verify-adapter.tmp.ts)",
+      "Bash(npx --yes tsx verify-tsv.tmp.ts)",
+      "Bash(npx --yes tsx verify-html.tmp.ts)"
     ]
   }
 }
