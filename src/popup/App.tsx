@@ -13,7 +13,7 @@ type CollectState =
   | { status: 'success', count: number }
   | { status: 'error', message: string }
 
-export default function App() {
+export function App() {
   const [platform, setPlatform] = useState<Platform | undefined>(undefined)
   const [collectState, setCollectState] = useState<CollectState>({ status: 'idle' })
 
