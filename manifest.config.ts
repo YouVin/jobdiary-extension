@@ -14,10 +14,7 @@ export default defineManifest({
     },
     default_popup: 'src/popup/index.html',
   },
-  permissions: [
-    'sidePanel',
-    'contentSettings',
-  ],
+  permissions: [],
   host_permissions: [
     'https://*.saramin.co.kr/*',
     'https://www.jobkorea.co.kr/User/*',
@@ -41,7 +38,4 @@ export default defineManifest({
       'https://wanted.co.kr/status/*',
     ],
   }],
-  side_panel: {
-    default_path: 'src/sidepanel/index.html',
-  },
 })
