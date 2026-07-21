@@ -14,7 +14,7 @@ export default defineManifest({
     },
     default_popup: 'src/popup/index.html',
   },
-  permissions: [],
+  permissions: ['storage'],
   host_permissions: [
     'https://*.saramin.co.kr/*',
     'https://www.jobkorea.co.kr/User/*',
