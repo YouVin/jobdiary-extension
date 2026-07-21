@@ -2,6 +2,7 @@ import type { Application, Platform } from '@/types/application'
 import { useEffect, useState } from 'react'
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '@/lib/messages'
 import { detectPlatform } from '@/lib/platformDetect'
+import { saveSiteApplications } from '@/lib/storage'
 import { copyRichText } from '@/lib/clipboard'
 import { applicationsToHtml, applicationsToTsv } from '@/lib/tsv'
 import { Button } from './components/Button'
@@ -67,6 +68,8 @@ export function App() {
         setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
         return
       }
+
+      await saveSiteApplications(platform, response.applications)
 
       setCollectState({ status: 'success', count: response.count, applications: response.applications })
     }
