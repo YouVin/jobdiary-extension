@@ -14,4 +14,11 @@ export const JOBKOREA_SELECTORS = {
   externalIdAttr: 'idx',
   // 상태 텍스트 (data 없음), 예: "지원완료", "지원취소"
   status: '.apply-status .item.status',
+  // 오래된 지원(.devBtnOldDel 등)은 버튼에 memname/gititle/applydate가 없고 data-idx만 있다.
+  // externalId는 최신 행과 동일하게 data-idx 기준으로 통일한다.
+  oldDataButton: '[data-idx]',
+  // 버튼 data가 없을 때(오래된 지원, 공고 삭제된 행 등) 본문 텍스트에서 읽는 폴백 소스.
+  companyFallback: '.company a',
+  positionFallback: '.description a',
+  appliedAtFallback: '.apply-status .date',
 } as const;

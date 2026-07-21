@@ -3,6 +3,7 @@ import { WANTED_SELECTORS } from './selectors/wanted';
 import type { ScrapedApplication } from '../types/application';
 import { convertToApplication } from '../lib/adapter';
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
+import { waitForElement } from './waitForElement';
 
 // "2026. 7. 11" (마침표+공백 구분, 월/일 한 자리 가능) → "2026.07.11" (사람인/잡코리아 포맷과 통일)
 // 형식이 예상과 다르면 원문을 그대로 반환, 값이 없으면 빈 문자열 반환
@@ -47,10 +48,18 @@ function logParsedApplications(applications: ScrapedApplication[]): void {
 chrome.runtime.onMessage.addListener((message: CollectMessage, _sender, sendResponse) => {
   if (message.type !== COLLECT_MESSAGE_TYPE) return;
 
-  const scraped = parseWanted();
-  logParsedApplications(scraped);
+  // React SPA라 페이지 로드 직후엔 목록이 아직 안 그려졌을 수 있다. 컨테이너가 나타날 때까지
+  // 짧게 폴링한 뒤 파싱한다. 타임아웃까지 안 나타나도 에러 처리하지 않는다 — parseWanted()가
+  // 그 시점 DOM을 그대로 다시 읽으므로, 타임아웃 전에 나타나면 파싱되고 끝까지 안 나타나면
+  // "진짜 0건"으로 빈 배열이 반환된다(상태별 URL이라 실제로 0건일 수 있음).
+  waitForElement(WANTED_SELECTORS.container).then(() => {
+    const scraped = parseWanted();
+    logParsedApplications(scraped);
 
-  const applications = scraped.map(convertToApplication);
-  const response: CollectResponse = { applications, count: applications.length };
-  sendResponse(response);
+    const applications = scraped.map(convertToApplication);
+    const response: CollectResponse = { applications, count: applications.length };
+    sendResponse(response);
+  });
+
+  return true; // 비동기 응답이므로 메시지 채널을 열어둔다 (MV3 규약)
 });

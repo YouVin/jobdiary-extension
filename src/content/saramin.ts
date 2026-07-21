@@ -9,7 +9,11 @@ export function parseSaramin(): ScrapedApplication[] {
 
   return Array.from(rows).map((row) => {
     const company = row.dataset[SARAMIN_SELECTORS.companyAttr] ?? '';
-    const position = row.dataset[SARAMIN_SELECTORS.positionAttr] ?? '';
+    // 점핏(Jumpit) 연동 공고는 rec_division이 빈 문자열로 온다 — 이때만 recruittitle로 폴백.
+    // rec_division이 정상 값이면(대부분의 행) 그대로 쓰고 폴백을 타지 않는다.
+    const position = row.dataset[SARAMIN_SELECTORS.positionAttr]
+      || row.dataset[SARAMIN_SELECTORS.positionFallbackAttr]
+      || '';
     const appliedAt = row.querySelector(SARAMIN_SELECTORS.appliedAt)?.textContent?.trim() ?? '';
     const status = row.querySelector(SARAMIN_SELECTORS.status)?.textContent?.trim() ?? '';
     const externalId = row.dataset[SARAMIN_SELECTORS.externalIdAttr];

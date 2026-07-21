@@ -20,23 +20,35 @@ export function parseJobkorea(): ScrapedApplication[] {
   const results: ScrapedApplication[] = [];
 
   rows.forEach((row) => {
-    // 각 행에서 data 속성을 담은 버튼을 찾는다. 없으면 지원내역 행이 아니므로 스킵.
     const dataButton = row.querySelector<HTMLElement>(JOBKOREA_SELECTORS.dataButton);
-    if (!dataButton) return;
 
-    const company = dataButton.dataset[JOBKOREA_SELECTORS.companyAttr] ?? '';
-    const position = dataButton.dataset[JOBKOREA_SELECTORS.positionAttr] ?? '';
-    const appliedAt = formatApplyDate(dataButton.dataset[JOBKOREA_SELECTORS.appliedAtAttr]);
-    const status = row.querySelector(JOBKOREA_SELECTORS.status)?.textContent?.trim() ?? '';
-    const externalId = dataButton.dataset[JOBKOREA_SELECTORS.externalIdAttr];
+    if (dataButton) {
+      // 최신 형식(devBtnDel/devBtnCancel): 버튼 data 속성 그대로 사용 — 기존 동작 그대로 유지.
+      results.push({
+        company: dataButton.dataset[JOBKOREA_SELECTORS.companyAttr] ?? '',
+        position: dataButton.dataset[JOBKOREA_SELECTORS.positionAttr] ?? '',
+        platform: 'jobkorea',
+        appliedAt: formatApplyDate(dataButton.dataset[JOBKOREA_SELECTORS.appliedAtAttr]),
+        status: row.querySelector(JOBKOREA_SELECTORS.status)?.textContent?.trim() ?? '',
+        externalId: dataButton.dataset[JOBKOREA_SELECTORS.externalIdAttr],
+      });
+      return;
+    }
+
+    // 오래된 형식(devBtnOldDel 등) 또는 공고가 삭제된 행: 버튼에 memname/gititle/applydate가
+    // 없어 본문 텍스트로 폴백한다. data-idx를 가진 요소도, 회사명 텍스트도 둘 다 없으면
+    // 빈 tr 등 지원 행이 아닌 것으로 보고 스킵한다.
+    const oldDataButton = row.querySelector<HTMLElement>(JOBKOREA_SELECTORS.oldDataButton);
+    const company = row.querySelector(JOBKOREA_SELECTORS.companyFallback)?.textContent?.trim() ?? '';
+    if (!oldDataButton && !company) return;
 
     results.push({
       company,
-      position,
+      position: row.querySelector(JOBKOREA_SELECTORS.positionFallback)?.textContent?.trim() ?? '',
       platform: 'jobkorea',
-      appliedAt,
-      status,
-      externalId,
+      appliedAt: row.querySelector(JOBKOREA_SELECTORS.appliedAtFallback)?.textContent?.trim() ?? '',
+      status: row.querySelector(JOBKOREA_SELECTORS.status)?.textContent?.trim() ?? '',
+      externalId: oldDataButton?.dataset[JOBKOREA_SELECTORS.externalIdAttr],
     });
   });
 
