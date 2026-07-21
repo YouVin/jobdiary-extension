@@ -20,7 +20,7 @@
 ## 폴더 구조 핵심
 - `src/content/{site}.ts` — 사이트별 content script (파싱)
 - `src/content/selectors/{site}.ts` — 사이트별 셀렉터 상수
-- `src/background/index.ts` — service worker (저장, 매핑, 중복제거)
+- `src/background/index.ts` — service worker (저장·매핑·전달. 중복 판별은 하지 않음 — 웹앱 전담)
 - `src/popup/` — popup UI (React)
 - `src/lib/statusMapping.ts` — 상태 원문 → Status
 - `src/lib/dateNormalize.ts` — 날짜 정규화
@@ -54,7 +54,7 @@ interface ScrapedApplication {
 
 **중복 판별은 익스텐션 책임이 아니다.** 익스텐션은 사이트별 덮어쓰기로만 데이터를 관리한다(수집·누적·복사까지가 익스텐션 책임). 진짜 중복 지원 판별(platform+externalId 조합 등)은 웹앱의 addApplicationsFromExtension이 전담한다. 상세: docs/PLANNING.md, docs/INTEGRATION.md.
 
-manifest `permissions`에 `"storage"` 추가 예정 (chrome.storage.local 사용을 위해 필요, 현재는 `[]`).
+manifest `permissions`에 `"storage"` 추가 예정 (chrome.storage.local 사용을 위해 필요, 현재는 `[]`). 전체 복사(`navigator.clipboard`)는 별도 권한이 필요 없다 — 확장 팝업의 사용자 클릭 맥락에서 표준 Clipboard API로 이미 권한 없이 동작 중이다. `"storage"`는 누적 저장 전용이며 복사 기능과는 무관하다.
 
 ## 코딩 규칙
 - named export, 함수형, TypeScript

@@ -102,9 +102,24 @@ function convertToApplication(
 
 ---
 
+## 수신부 검증 계약 (필수)
+
+`window.postMessage`/`CustomEvent`는 같은 페이지에 떠 있는 **다른 스크립트**(다른 확장 프로그램, 삽입된 서드파티 스크립트 등)도 똑같이 보낼 수 있는 경로다. 즉 "메시지가 왔다"는 사실만으로는 그게 우리 익스텐션이 보낸 것인지 보장되지 않는다. 그래서 웹앱이 `addApplicationsFromExtension`을 호출하기 **전에** 아래 네 가지를 반드시 검증해야 한다. 이는 전달 방식(A: `postMessage` vs B: `CustomEvent` vs 그 외) 선택과 무관하게 **필수**다:
+
+1. **origin/source 확인**: `postMessage`라면 `event.origin`이 신뢰할 수 있는 값(웹앱 자기 자신의 origin)인지 확인한다. `CustomEvent`라면 신뢰할 수 있는 컨텍스트에서 dispatch됐는지 확인할 별도 수단을 둔다.
+2. **메시지 타입 확인**: 익스텐션과 미리 약속한 식별자(예: `type: 'JOBDIARY_COLLECTED'`)가 정확히 일치하는지 확인한다. 다른 목적의 메시지를 실수로 처리하지 않도록 한다.
+3. **payload 스키마 검증**: 수신한 값이 실제로 `Application[]` 구조(company/position/platform/status/appliedAt 등 필드 타입과 값 범위)를 만족하는지 검증한다. 구조가 맞지 않으면 폐기하고 `addApplicationsFromExtension`을 호출하지 않는다.
+4. **사용자 동작(user gesture) 기반 전달인지 확인**: 사용자가 실제로 "웹앱 열기"/수집 버튼 등을 눌러 시작된 흐름에서 온 메시지인지 확인한다 — 예상치 못한 시점에 자동으로 날아온 메시지는 처리하지 않는다.
+
+> ⚠️ 이 검증 없이 `addApplicationsFromExtension`을 호출하면, 같은 페이지의 다른 스크립트가 임의의 지원내역을 만들어 웹앱 데이터에 주입할 수 있다. 전달 방식 자체는 여전히 E-5에서 확정하지만, 어떤 방식을 고르든 위 네 가지 검증은 필수 준수 사항이다.
+
+이 검증의 최종 구현은 웹앱 쪽 책임이며, 웹앱 레포 `docs/INTEGRATION.md`가 그 진실이다. 여기서는 익스텐션이 선택하는 전달 방식(postMessage/CustomEvent)이 구조적으로 요구하는 최소 검증 계약을 명시한다.
+
+---
+
 ## 전달 방식 (미확정)
 
-> ⚠️ 아직 실제 연동 구현으로 검증되지 않았다. 아래 후보는 위 "전달 제약"을 만족하는 안들이다. **변환 주체(익스텐션)와 웹앱 경계 payload 형식(변환 완료된 `Application`)은 이미 확정**이며 (위 "데이터 변환" 참고), 실제 연동 구현(E-5)에서 정하는 것은 다음 두 가지뿐이다:
+> ⚠️ 아직 실제 연동 구현으로 검증되지 않았다. 아래 후보는 위 "전달 제약"을 만족하는 안들이다. **변환 주체(익스텐션), 웹앱 경계 payload 형식(변환 완료된 `Application`), 그리고 "수신부 검증 계약" 준수는 이미 확정**이며 (위 "데이터 변환"·"수신부 검증 계약" 참고), 실제 연동 구현(E-5)에서 정하는 것은 다음 두 가지뿐이다:
 >
 > - **저장 표현**: chrome.storage.local에 원본 `ScrapedApplication`을 저장해뒀다가 웹앱 전송 직전에 변환할지, 변환된 `Application`을 미리 저장해둘지. 어느 쪽이든 **변환은 익스텐션이 수행**하며 웹앱으로 나가는 payload는 항상 변환 완료 상태다.
 > - **전송 경로**: 구체적 전달 경로(`postMessage` vs DOM 커스텀 이벤트 vs `chrome.runtime.sendMessage` 조합)와 웹앱 수신 지점의 정확한 위치.
@@ -154,7 +169,7 @@ Supabase 도입 후.
 ```text
 1. 익스텐션: 사람인 수집 → chrome.storage 저장까지
 2. 익스텐션: convertToApplication 어댑터 구현 (status/날짜 매핑 포함)
-3. 웹앱: addApplicationsFromExtension 수신 로직 구현 (판별 + 저장)
+3. 웹앱: addApplicationsFromExtension 수신 로직 구현 (수신부 검증 계약 준수 후 판별 + 저장)
 4. 익스텐션: 웹앱으로 전달 (저장 표현/전송 경로는 E-5에서 확정, 변환은 항상 익스텐션이 사전에 완료)
 5. 실제 연동 테스트 (사람인 → 웹앱 칸반 반영 확인)
 6. 잡코리아, 원티드 확장
