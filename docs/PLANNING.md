@@ -43,11 +43,12 @@
 2. 사람인 파싱 (제일 쉬움) → 콘솔에 데이터 찍어 검증
 3. "가져오기" 버튼 삽입 + 파싱 연결
 4. chrome.storage 저장
-5. 웹앱 전달 방식 구현
-6. 잡코리아 확장
-7. 원티드 확장
-8. popup UI
-9. 크롬 웹스토어 배포
+5. 누적 저장 + 전체 복사 (chrome.storage.local에 사이트별 슬롯 저장, 3사이트 합쳐 TSV+HTML 복사)
+6. 웹앱 전달 방식 구현
+7. 잡코리아 확장
+8. 원티드 확장
+9. popup UI
+10. 크롬 웹스토어 배포
 ```
 
 **원칙: 사람인 1개를 끝까지 완성(파싱→저장→전달)한 뒤 나머지 복제.**
@@ -61,9 +62,13 @@
 ### 2단계 (로그인 후)
 웹앱 로그인 시 익스텐션이 웹앱 API로 직접 전송, 기기 간 동기화
 
-## 7. 데이터 정합성
+## 7. 데이터 정합성 / 저장 전략
 
-- **중복 방지**: platform + externalId 조합으로 판별 (원티드는 externalId가 없어 platform + company + position + appliedAt 조합). 판별/저장은 웹앱의 addApplicationsFromExtension이 처리 (상세: [INTEGRATION.md](./INTEGRATION.md))
+- **저장 구조**: chrome.storage.local에 사이트별 슬롯(`{ saramin, jobkorea, wanted }`)으로 누적 저장한다. 같은 사이트를 다시 수집하면 그 슬롯만 최신 결과로 덮어쓴다 — 사이트 단위 스냅샷이며 병합이 아니다.
+- **데이터 유지**: 클립보드로 복사해도 저장된 데이터는 자동으로 비우지 않는다. 유저가 "초기화" 버튼을 눌렀을 때만 전체 슬롯을 비운다.
+- **전체 복사**: 3사이트 슬롯을 합쳐 TSV + HTML 표로 클립보드에 넣는다. 사이트별 수집 시 쓰는 복사 로직(E-6)을 그대로 재사용한다.
+- **중복 방지(웹앱 전담)**: 익스텐션은 진짜 중복 판별 로직을 두지 않는다 — 사이트별 덮어쓰기로만 관리하고, 실제 중복 지원 감지는 platform + externalId 조합(원티드는 externalId가 없어 platform + company + position + appliedAt 조합)으로 웹앱의 addApplicationsFromExtension이 전담한다. 익스텐션 책임은 수집·누적·복사까지 (상세: [INTEGRATION.md](./INTEGRATION.md))
+- **백엔드 미도입**: 이번 단계는 chrome.storage.local만으로 충분하다. 서버(Supabase) 연동은 2단계(로그인 후) 과제로 유지한다 (위 "6. 웹앱 연동 방식" 참고).
 - **상태 매핑 실패**: applied로 기본 처리, 유저가 웹앱에서 수정
 - **파싱 실패 대비**: 수동 저장 버튼 항상 제공
 
