@@ -1,25 +1,27 @@
-import type { Application, Platform } from '@/types/application'
+import type { Platform } from '@/types/application'
 import { useEffect, useState } from 'react'
+import { copyRichText } from '@/lib/clipboard'
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '@/lib/messages'
 import { detectPlatform } from '@/lib/platformDetect'
-import { saveSiteApplications } from '@/lib/storage'
-import { copyRichText } from '@/lib/clipboard'
+import { clearAll, getAllApplications, getSiteCounts, saveSiteApplications } from '@/lib/storage'
 import { applicationsToHtml, applicationsToTsv } from '@/lib/tsv'
 import { Button } from './components/Button'
-import { PlatformBadge } from './components/PlatformBadge'
+import { PLATFORM_LABEL, PlatformBadge } from './components/PlatformBadge'
 
 const UNSUPPORTED_SITE_MESSAGE = '이 페이지에서는 수집할 수 없어요'
+const PLATFORM_ORDER: Platform[] = ['saramin', 'jobkorea', 'wanted']
+const EMPTY_COUNTS: Record<Platform, number> = { saramin: 0, jobkorea: 0, wanted: 0 }
 
 type CollectState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'success', count: number, applications: Array<Omit<Application, 'id' | 'updatedAt'>> }
+  | { status: 'success', count: number }
   | { status: 'error', message: string }
 
 type CopyState = 'idle' | 'copied' | 'error'
 
 const COPY_BUTTON_LABEL: Record<CopyState, string> = {
-  idle: '복사하기',
+  idle: '전체 복사',
   copied: '복사됐어요',
   error: '복사 실패, 다시 시도해 주세요',
 }
@@ -28,6 +30,8 @@ export function App() {
   const [platform, setPlatform] = useState<Platform | undefined>(undefined)
   const [collectState, setCollectState] = useState<CollectState>({ status: 'idle' })
   const [copyState, setCopyState] = useState<CopyState>('idle')
+  const [siteCounts, setSiteCounts] = useState<Record<Platform, number>>(EMPTY_COUNTS)
+  const [resetConfirming, setResetConfirming] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -44,8 +48,28 @@ export function App() {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+
+    getSiteCounts().then((counts) => {
+      if (!cancelled) setSiteCounts(counts)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const totalCount = PLATFORM_ORDER.reduce((sum, p) => sum + siteCounts[p], 0)
+  const hasAnyData = totalCount > 0
+
+  async function refreshSiteCounts() {
+    setSiteCounts(await getSiteCounts())
+  }
+
   async function handleCollect() {
     setCopyState('idle')
+    setResetConfirming(false)
 
     if (!platform) {
       setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
@@ -70,22 +94,19 @@ export function App() {
       }
 
       await saveSiteApplications(platform, response.applications)
+      await refreshSiteCounts()
 
-      setCollectState({ status: 'success', count: response.count, applications: response.applications })
+      setCollectState({ status: 'success', count: response.count })
     }
     catch {
       setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
     }
   }
 
-  async function handleCopy() {
-    if (collectState.status !== 'success') return
-
+  async function handleCopyAll() {
     try {
-      await copyRichText(
-        applicationsToTsv(collectState.applications),
-        applicationsToHtml(collectState.applications),
-      )
+      const applications = await getAllApplications()
+      await copyRichText(applicationsToTsv(applications), applicationsToHtml(applications))
       setCopyState('copied')
     }
     catch {
@@ -93,6 +114,20 @@ export function App() {
     }
 
     window.setTimeout(() => setCopyState('idle'), 2000)
+  }
+
+  async function handleReset() {
+    if (!resetConfirming) {
+      setResetConfirming(true)
+      window.setTimeout(() => setResetConfirming(false), 3000)
+      return
+    }
+
+    await clearAll()
+    await refreshSiteCounts()
+    setResetConfirming(false)
+    setCopyState('idle')
+    setCollectState({ status: 'idle' })
   }
 
   return (
@@ -114,11 +149,8 @@ export function App() {
         >
           {collectState.status === 'loading' ? '수집 중...' : '지원내역 수집하기'}
         </Button>
-      </section>
-
-      <section className="border-b border-card-border px-4 py-3">
         {collectState.status === 'success' && (
-          <p className="text-sm text-text-primary">
+          <p className="text-sm text-text-muted">
             {collectState.count}
             건 수집됨
           </p>
@@ -129,18 +161,38 @@ export function App() {
         {collectState.status === 'loading' && (
           <p className="text-sm text-text-muted">수집하는 중이에요…</p>
         )}
-        {collectState.status === 'idle' && (
-          <p className="text-sm text-text-muted">아직 수집한 내역이 없어요</p>
-        )}
       </section>
 
-      {collectState.status === 'success' && (
-        <section className="border-b border-card-border px-4 py-3">
-          <Button variant="secondary" onClick={handleCopy}>
-            {COPY_BUTTON_LABEL[copyState]}
+      <section className="border-b border-card-border px-4 py-3">
+        <p className="mb-2 text-sm font-medium text-text-primary">
+          전체
+          {' '}
+          {totalCount}
+          건
+        </p>
+        <ul className="flex flex-col gap-1">
+          {PLATFORM_ORDER.map(p => (
+            <li key={p} className="flex items-center justify-between text-sm text-text-secondary">
+              <span>{PLATFORM_LABEL[p]}</span>
+              <span>
+                {siteCounts[p]}
+                건
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="flex flex-col gap-2 border-b border-card-border px-4 py-3">
+        <Button variant="secondary" onClick={handleCopyAll} disabled={!hasAnyData}>
+          {COPY_BUTTON_LABEL[copyState]}
+        </Button>
+        {hasAnyData && (
+          <Button variant="secondary" onClick={handleReset} className="text-status-rejected!">
+            {resetConfirming ? '정말요? 다시 누르면 전체 삭제' : '초기화'}
           </Button>
-        </section>
-      )}
+        )}
+      </section>
 
       <section className="px-4 py-3">
         {/* "취준일기 열기" 동작 로직은 E-5에서 연결. 지금은 시각적 배치만. */}

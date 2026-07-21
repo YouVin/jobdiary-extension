@@ -1,6 +1,6 @@
 import type { Platform } from '@/types/application'
 
-const PLATFORM_LABEL: Record<Platform, string> = {
+export const PLATFORM_LABEL: Record<Platform, string> = {
   saramin: '사람인',
   wanted: '원티드',
   jobkorea: '잡코리아',
