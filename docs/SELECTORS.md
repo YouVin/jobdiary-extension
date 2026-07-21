@@ -41,23 +41,28 @@ https://www.saramin.co.kr/zf_user/mypage/apply-status (예상)
 .row._apply_list
 ```
 
+### DOM 검증 노트 (실물 HTML 분석 결과)
+
+- **점핏(Jumpit) 연동 공고는 `rec_division`이 빈 문자열로 옴**: `data-jumpit_rec_idx`에 값이 있는 행(점핏 경유 공고)은 `data-rec_division=""`이고, 화면에도 `.division` span 자체가 없다. 이 경우 `data-recruittitle` 속성에 공고 제목(예: "프론트엔드 개발자 (React)")이 대신 들어있어 이걸로 폴백한다. `rec_division`이 정상 값인 일반 공고(대다수)는 폴백을 타지 않고 그대로 쓴다.
+
 ### 셀렉터
 
-| 데이터   | 셀렉터                       | 비고                      |
-| -------- | ---------------------------- | ------------------------- |
-| 회사명   | `[data-company_nm]` 속성값   | `row.dataset.company_nm`  |
-| 공고명   | `[data-rec-division]` 속성값 | `row.dataset.recDivision` |
-| 지원일   | `.col_date` 텍스트           | "2026.06.09 20:27"        |
-| 상태     | `.txt_status` 텍스트         | "지원완료" 등             |
-| 세부상태 | `.txt_sub` 텍스트            | "미열람" 등               |
-| 고유ID   | `[data-recruitapply_idx]`    | 중복 방지                 |
+| 데이터   | 셀렉터                                              | 비고                                                                |
+| -------- | ---------------------------------------------------- | ------------------------------------------------------------------- |
+| 회사명   | `[data-company_nm]` 속성값                          | `row.dataset.company_nm`                                            |
+| 공고명   | `[data-rec_division]` 속성값, 비어있으면 `[data-recruittitle]` 폴백 | `row.dataset.rec_division \|\| row.dataset.recruittitle`. 점핏 연동 공고는 전자가 빈 문자열 |
+| 지원일   | `.col_date` 텍스트                                  | "2026.06.09 20:27"                                                   |
+| 상태     | `.txt_status` 텍스트                                | "지원완료" 등                                                        |
+| 세부상태 | `.txt_sub` 텍스트                                   | "미열람" 등                                                          |
+| 고유ID   | `[data-recruitapply_idx]`                           | 중복 방지                                                            |
 
 ### 예시 코드
 
 ```javascript
 document.querySelectorAll(".row._apply_list").forEach((row) => {
   const company = row.dataset.company_nm;
-  const position = row.dataset.recDivision;
+  // 점핏 연동 공고는 rec_division이 빈 문자열이라 recruittitle로 폴백한다.
+  const position = row.dataset.rec_division || row.dataset.recruittitle;
   const appliedAt = row.querySelector(".col_date")?.textContent?.trim();
   const status = row.querySelector(".txt_status")?.textContent?.trim();
   const externalId = row.dataset.recruitapply_idx;

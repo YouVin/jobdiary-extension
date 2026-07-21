@@ -1,5 +1,6 @@
 import type { Platform } from '@/types/application'
 import { useEffect, useState } from 'react'
+import { isConnectionError, waitForTabComplete } from '@/lib/collectRecovery'
 import { copyRichText } from '@/lib/clipboard'
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '@/lib/messages'
 import { detectPlatform } from '@/lib/platformDetect'
@@ -11,6 +12,30 @@ import { PLATFORM_LABEL, PlatformBadge } from './components/PlatformBadge'
 const UNSUPPORTED_SITE_MESSAGE = '이 페이지에서는 수집할 수 없어요'
 const PLATFORM_ORDER: Platform[] = ['saramin', 'jobkorea', 'wanted']
 const EMPTY_COUNTS: Record<Platform, number> = { saramin: 0, jobkorea: 0, wanted: 0 }
+const RECOVERY_TIMEOUT_MS = 5000
+const RECOVERY_RETRY_ATTEMPTS = 3
+const RECOVERY_RETRY_INTERVAL_MS = 300
+
+function sendCollectMessage(tabId: number): Promise<CollectResponse | undefined> {
+  const request: CollectMessage = { type: COLLECT_MESSAGE_TYPE }
+  return chrome.tabs.sendMessage<CollectMessage, CollectResponse>(tabId, request)
+}
+
+// 새로고침 직후엔 content script가 아직 리스너를 등록 못 했을 수 있어 몇 번 짧게 재시도한다.
+// "리시버 없음" 에러가 아닌 다른 에러거나 마지막 시도까지 실패하면 undefined를 반환한다(throw 안 함).
+async function sendCollectMessageWithRetries(tabId: number): Promise<CollectResponse | undefined> {
+  for (let attempt = 1; attempt <= RECOVERY_RETRY_ATTEMPTS; attempt++) {
+    try {
+      return await sendCollectMessage(tabId)
+    }
+    catch (error) {
+      const isLastAttempt = attempt === RECOVERY_RETRY_ATTEMPTS
+      if (!isConnectionError(error) || isLastAttempt) return undefined
+      await new Promise(resolve => window.setTimeout(resolve, RECOVERY_RETRY_INTERVAL_MS))
+    }
+  }
+  return undefined
+}
 
 type CollectState =
   | { status: 'idle' }
@@ -32,6 +57,7 @@ export function App() {
   const [copyState, setCopyState] = useState<CopyState>('idle')
   const [siteCounts, setSiteCounts] = useState<Record<Platform, number>>(EMPTY_COUNTS)
   const [resetConfirming, setResetConfirming] = useState(false)
+  const [recovering, setRecovering] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -70,6 +96,7 @@ export function App() {
   async function handleCollect() {
     setCopyState('idle')
     setResetConfirming(false)
+    setRecovering(false)
 
     if (!platform) {
       setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
@@ -85,8 +112,21 @@ export function App() {
         return
       }
 
-      const request: CollectMessage = { type: COLLECT_MESSAGE_TYPE }
-      const response = await chrome.tabs.sendMessage<CollectMessage, CollectResponse>(tab.id, request)
+      let response: CollectResponse | undefined
+      try {
+        response = await sendCollectMessage(tab.id)
+      }
+      catch (error) {
+        // 진짜 미지원 페이지가 아니라(platform은 감지됨) content script가 그 탭에
+        // 없는 경우(SPA 내부 라우팅으로 진입했거나 익스텐션이 리로드된 뒤 새로고침 안 한 탭).
+        // 새로고침 후 재시도한다. 이 에러가 아니면 복구를 시도하지 않고 바깥 catch로 넘긴다.
+        if (!isConnectionError(error)) throw error
+
+        setRecovering(true)
+        await chrome.tabs.reload(tab.id)
+        await waitForTabComplete(tab.id, RECOVERY_TIMEOUT_MS)
+        response = await sendCollectMessageWithRetries(tab.id)
+      }
 
       if (!response) {
         setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
@@ -100,6 +140,9 @@ export function App() {
     }
     catch {
       setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
+    }
+    finally {
+      setRecovering(false)
     }
   }
 
@@ -159,7 +202,9 @@ export function App() {
           <p className="text-sm text-status-rejected">{collectState.message}</p>
         )}
         {collectState.status === 'loading' && (
-          <p className="text-sm text-text-muted">수집하는 중이에요…</p>
+          <p className="text-sm text-text-muted">
+            {recovering ? '페이지를 준비하는 중...' : '수집하는 중이에요…'}
+          </p>
         )}
       </section>
 
