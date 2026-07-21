@@ -20,12 +20,14 @@ popup              아이콘 클릭 시 뜨는 UI (React)
    ScrapedApplication[] 생성
       ↓ chrome.runtime.sendMessage
    service worker
-      ↓ chrome.storage.local 저장
-      ↓
-   [popup] 수집 결과 표시 / [웹앱] 데이터 전달
+      ↓ chrome.storage.local에 사이트별 슬롯으로 누적 저장 (saramin/jobkorea/wanted,
+      ↓ 같은 사이트 재수집 시 해당 슬롯만 덮어씀)
+   [popup] 전체 복사(TSV+HTML) | 웹앱 전달
 ```
 
 > 상태 매핑 + 날짜 정규화(Application 변환)를 저장 시점에 할지 전달 시점에 할지는 미확정이다. 변환은 한 곳에서만 수행한다는 원칙만 확정돼 있고, 정확한 위치는 실제 연동 구현(E-5)에서 정한다. 익스텐션은 웹앱 함수를 직접 호출할 수 없어 메시지 전달 경로를 거치며, 최종 중복 판별 + 저장은 웹앱의 `addApplicationsFromExtension`이 담당한다 (상세: [INTEGRATION.md](./INTEGRATION.md)).
+>
+> 전체 복사 출구는 웹앱을 거치지 않으므로 `addApplicationsFromExtension`도, 중복 판별도 적용되지 않는다 — 익스텐션은 두 출구 모두에서 사이트별 슬롯 덮어쓰기 이상의 중복 판별 로직을 갖지 않는다 (상세: [PLANNING.md](./PLANNING.md#7-데이터-정합성--저장-전략)).
 
 ## 3. 폴더 구조
 
@@ -55,7 +57,7 @@ jobdiary-extension/
 │   ├── lib/
 │   │   ├── statusMapping.ts     # 상태 원문 → Status
 │   │   ├── dateNormalize.ts     # 날짜 정규화
-│   │   └── storage.ts           # chrome.storage 헬퍼
+│   │   └── storage.ts           # chrome.storage.local 사이트별 슬롯 저장/조회/초기화
 │   │
 │   └── types/
 │       └── application.ts       # ScrapedApplication 등 (웹앱과 공유)
@@ -71,11 +73,11 @@ jobdiary-extension/
 |------|------|
 | content/{site}.ts | 해당 사이트에서 파싱 실행, 버튼 삽입 |
 | content/selectors/ | 사이트별 셀렉터 상수 (깨지면 여기만 수정) |
-| background/index.ts | 메시지 수신, chrome.storage 저장 (Application 변환을 이 단계에서 할지는 미확정 — INTEGRATION.md 참고) |
+| background/index.ts | 메시지 수신, chrome.storage 저장·전달 (Application 변환을 이 단계에서 할지는 미확정 — INTEGRATION.md 참고). 중복 판별은 하지 않음 — 웹앱 전담 |
 | popup/App.tsx | 수집 현황 표시, 웹앱 열기 |
 | lib/statusMapping.ts | "지원완료" → applied, "취소" 포함 → canceled 등 |
 | lib/dateNormalize.ts | 각 사이트 날짜 → 자정 기준 ISO (시분 버림) |
-| lib/storage.ts | chrome.storage 래퍼 |
+| lib/storage.ts | chrome.storage.local 사이트별 슬롯(saramin/jobkorea/wanted) 누적 저장·조회. 재수집 시 해당 슬롯만 덮어씀, "초기화" 버튼 호출 시에만 전체 비움 |
 
 ## 5. MV3 주의사항
 
@@ -109,6 +111,8 @@ jobdiary-extension/
   "action": { "default_popup": "src/popup/index.html" }
 }
 ```
+
+> `permissions`의 `"storage"`는 **chrome.storage.local 접근(사이트별 슬롯 누적 저장)에만** 필요한 권한이다. 전체 복사(`navigator.clipboard.write`/`writeText`)는 별도 manifest 권한이 필요 없다 — 사용자 클릭(user gesture) 맥락의 확장 팝업에서 호출되는 표준 Clipboard API라 그 자체로 동작한다(실제로 복사 기능은 이미 권한 추가 없이 동작 중). 실제 `manifest.config.ts`는 아직 누적 저장 기능을 구현하기 전이라 `permissions`가 빈 배열이며, 누적 저장 구현 시 `"storage"`만 추가할 예정이다.
 
 ## 7. 개발 규칙 (웹앱과 동일)
 
