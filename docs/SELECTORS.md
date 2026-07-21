@@ -93,35 +93,48 @@ document.querySelectorAll(".row._apply_list").forEach((row) => {
 - **빈 `<tr></tr>`가 데이터 행 사이에 존재**: data 속성 기반 필터를 쓰면 자연히 스킵된다.
 - **지원일은 텍스트보다 `data-applydate`가 안정적**: `.item.date` 텍스트는 "2026.06.13 00:43"처럼 시분이 있는 것도 있고 "2026.06.01"처럼 없는 것도 있어 들쭉날쭉하다. `data-applydate`는 항상 14자리 "20260601235538"(YYYYMMDDHHmmss) 풀 포맷이므로 이걸 파싱해 `YYYY.MM.DD HH:mm`으로 변환해 쓴다.
 - **회사명 원본 데이터가 깨진 사례 있음**: 예) `data-memname="아타드㈜(ATAD Corp."` 처럼 여는 괄호만 있고 닫는 괄호가 없는 경우가 있다. 잡코리아 원본 DB 이슈로 우리가 고칠 수 없으니 원문 그대로 저장한다.
+- **오래된 지원(`.devBtnOldDel` 등)은 버튼 data가 없어 본문 텍스트로 폴백**: 최신 지원은 `.devBtnDel`/`.devBtnCancel` 버튼에 `memname`/`gititle`/`applydate`/`idx`가 다 있지만, 오래된 지원은 `.devBtnOldDel` 버튼에 `data-idx`/`data-year`만 있고 `memname`/`gititle`/`applydate`가 없다. `[data-applydate]`로 필터하면(위 항목) 이 행들이 전부 스킵돼 지원 건수가 실제보다 적게 잡힌다. `[data-applydate]`가 없으면 회사명은 `.company a`, 공고명은 `.description a`, 지원일은 `.apply-status .date` 텍스트로 대신 읽는다. externalId는 오래된 버튼의 `data-idx`를 그대로 쓴다(최신 행과 같은 기준). 공고 자체가 삭제된 행(`<td colspan="2">삭제된 채용공고입니다.</td>`처럼 진행상태 칸이 합쳐짐)도 `.company`/`.description`은 본문에 남아있어 같은 폴백으로 수집된다.
 
 ### 셀렉터
 
 | 데이터   | 셀렉터                              | 비고                                                                                            |
 | -------- | ----------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 회사명   | `[data-memname]`                    | "㈜플레이웍스". 드물게 원본 데이터 자체가 깨져 있음(위 노트 참고)                               |
-| 공고명   | `[data-gititle]`                    | 마감일 없이 깔끔한 버전                                                                         |
-| 지원일   | `[data-applydate]`                  | "20260601235538"(YYYYMMDDHHmmss) 고정 포맷. `.item.date` 텍스트는 시분 유무가 들쭉날쭉해 비권장 |
-| 상태     | `.apply-status .item.status` 텍스트 | "지원취소", "지원완료" 등                                                                       |
+| 회사명   | `[data-memname]`, 없으면 `.company a` | "㈜플레이웍스". 드물게 원본 데이터 자체가 깨져 있음(위 노트 참고)                             |
+| 공고명   | `[data-gititle]`, 없으면 `.description a` | 마감일 없이 깔끔한 버전                                                                    |
+| 지원일   | `[data-applydate]`, 없으면 `.apply-status .date` | 버튼 데이터는 "20260601235538"(YYYYMMDDHHmmss) 고정 포맷. 본문 폴백은 "2026.04.01"(YYYY.MM.DD) |
+| 상태     | `.apply-status .item.status` 텍스트 | "지원취소", "지원완료" 등. 버튼 유무와 무관하게 항상 본문에서 읽음                              |
 | 진행상태 | `.apply-progress .status` 텍스트    | "진행중" 등                                                                                     |
 | 열람여부 | `.reading .read-not`                | "미열람"                                                                                        |
-| 고유ID   | `[data-idx]`                        | 중복 방지. data 속성을 가진 버튼(`.devBtnDel` 또는 `.devBtnCancel`)에서 읽음                    |
+| 고유ID   | `[data-idx]`                        | 중복 방지. `.devBtnDel`/`.devBtnCancel`(최신) 또는 `.devBtnOldDel`(오래된 지원) 버튼에서 읽음   |
 
 ### 예시 코드
 
 ```javascript
 document.querySelectorAll("tr").forEach((row) => {
   // 버튼 class(.devBtnDel/.devBtnCancel)로 필터하지 않는다 — 상태별로 class가 다르다.
-  // data-applydate 존재 여부로 필터하면 지원취소/진행중 행 모두 잡히고, 빈 <tr>도 자연히 스킵된다.
   const dataBtn = row.querySelector("[data-applydate]");
-  if (!dataBtn) return; // 지원 행이 아니면 스킵
-
-  const company = dataBtn.dataset.memname; // 드물게 괄호 등 원본 데이터가 깨져 있을 수 있음
-  const position = dataBtn.dataset.gititle; // 깔끔한 버전
-  const appliedAtRaw = dataBtn.dataset.applydate; // "20260601235538" (YYYYMMDDHHmmss)
   const status = row
     .querySelector(".apply-status .item.status")
     ?.textContent?.trim();
-  const externalId = dataBtn.dataset.idx;
+
+  if (dataBtn) {
+    // 최신 지원: 버튼 data 속성 그대로 사용.
+    const company = dataBtn.dataset.memname; // 드물게 괄호 등 원본 데이터가 깨져 있을 수 있음
+    const position = dataBtn.dataset.gititle; // 깔끔한 버전
+    const appliedAtRaw = dataBtn.dataset.applydate; // "20260601235538" (YYYYMMDDHHmmss)
+    const externalId = dataBtn.dataset.idx;
+    return;
+  }
+
+  // 오래된 지원(.devBtnOldDel 등)이거나 공고가 삭제된 행: 버튼에 memname/gititle/applydate가
+  // 없어 본문 텍스트로 폴백한다. data-idx도 회사명도 둘 다 없으면 빈 tr 등 지원 행이 아니므로 스킵.
+  const oldBtn = row.querySelector("[data-idx]");
+  const company = row.querySelector(".company a")?.textContent?.trim();
+  if (!oldBtn && !company) return;
+
+  const position = row.querySelector(".description a")?.textContent?.trim();
+  const appliedAtRaw = row.querySelector(".apply-status .date")?.textContent?.trim(); // "2026.04.01"
+  const externalId = oldBtn?.dataset.idx;
 });
 ```
 

@@ -9,6 +9,10 @@ export function isConnectionError(error: unknown): boolean {
 // 지정한 탭이 'complete' 상태가 될 때까지 기다린다 (새로고침 후 로드 완료 대기용).
 // 타임아웃 안에 도달 못 해도 reject하지 않고 그냥 resolve한다 — 호출자가 그 뒤에도
 // 한 번은 재시도해볼 수 있게 하기 위함이지, 이 함수가 "성공/실패"를 판정하진 않는다.
+//
+// 반드시 reload를 트리거하기 "전에" 호출해서 리스너를 먼저 붙여야 한다 (new Promise의
+// executor는 동기 실행되므로 이 함수가 반환되는 시점엔 이미 리스너가 등록돼 있다).
+// reload 이후에 호출하면 그 사이 'complete'가 먼저 지나가버려 영영 못 잡는 race가 생긴다.
 export function waitForTabComplete(tabId: number, timeoutMs: number): Promise<void> {
   return new Promise((resolve) => {
     let settled = false;
@@ -29,10 +33,5 @@ export function waitForTabComplete(tabId: number, timeoutMs: number): Promise<vo
 
     chrome.tabs.onUpdated.addListener(listener);
     const timer = setTimeout(finish, timeoutMs);
-
-    // reload 호출 직후 이미 complete 상태로 바뀌어 있는 드문 경우 대비.
-    chrome.tabs.get(tabId).then((tab) => {
-      if (tab.status === 'complete') finish();
-    }).catch(() => {});
   });
 }

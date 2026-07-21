@@ -123,8 +123,11 @@ export function App() {
         if (!isConnectionError(error)) throw error
 
         setRecovering(true)
+        // reload보다 먼저 호출해 리스너를 미리 붙인다 — reload 직후 곧바로 'complete'가
+        // 나버리는 race를 피하기 위함(waitForTabComplete 주석 참고).
+        const tabComplete = waitForTabComplete(tab.id, RECOVERY_TIMEOUT_MS)
         await chrome.tabs.reload(tab.id)
-        await waitForTabComplete(tab.id, RECOVERY_TIMEOUT_MS)
+        await tabComplete
         response = await sendCollectMessageWithRetries(tab.id)
       }
 
