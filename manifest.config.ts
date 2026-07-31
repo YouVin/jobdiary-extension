@@ -1,7 +1,7 @@
 import { defineManifest } from '@crxjs/vite-plugin'
 import pkg from './package.json'
 
-export default defineManifest({
+export default defineManifest((env) => ({
   manifest_version: 3,
   name: pkg.name,
   version: pkg.version,
@@ -17,10 +17,10 @@ export default defineManifest({
     default_popup: 'src/popup/index.html',
   },
   externally_connectable: {
-    matches: [
-      'http://localhost:3000/*',
-      'https://jobdiary.vercel.app/*',
-    ],
+    // 프로덕션 빌드에는 localhost를 포함하지 않는다 (개발 편의를 위해 dev 빌드에서만 허용)
+    matches: env.mode === 'production'
+      ? ['https://jobdiary.vercel.app/*']
+      : ['http://localhost:3000/*', 'https://jobdiary.vercel.app/*'],
   },
   permissions: ['storage'],
   host_permissions: [
@@ -46,4 +46,4 @@ export default defineManifest({
       'https://wanted.co.kr/status/*',
     ],
   }],
-})
+}))
