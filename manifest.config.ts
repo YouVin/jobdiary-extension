@@ -16,6 +16,8 @@ export default defineManifest((env) => ({
     },
     default_popup: 'src/popup/index.html',
   },
+  // 웹앱이 chrome.runtime.sendMessage(익스텐션ID, ...)로 pull 요청을 보낼 수 있는 origin.
+  // src/background/index.ts의 ALLOWED_ORIGINS와 반드시 같은 목록을 유지한다.
   externally_connectable: {
     // 프로덕션 빌드에는 localhost를 포함하지 않는다 (개발 편의를 위해 dev 빌드에서만 허용)
     matches: env.mode === 'production'
@@ -30,6 +32,10 @@ export default defineManifest((env) => ({
     'https://www.wanted.co.kr/status/*',
     'https://wanted.co.kr/status/*',
   ],
+  background: {
+    service_worker: 'src/background/index.ts',
+    type: 'module',
+  },
   content_scripts: [{
     js: ['src/content/saramin.ts'],
     matches: ['https://*.saramin.co.kr/*'],
