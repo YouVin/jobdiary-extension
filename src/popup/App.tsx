@@ -17,7 +17,9 @@ const RECOVERY_RETRY_ATTEMPTS = 3
 const RECOVERY_RETRY_INTERVAL_MS = 300
 // manifest.config.ts의 externally_connectable / src/background/index.ts의 ALLOWED_ORIGINS와
 // 반드시 같은 웹앱 주소를 유지한다. 프로덕션 빌드에선 localhost 대신 배포 주소로 연다.
-const WEBAPP_URL = import.meta.env.PROD ? 'https://jobdiary.vercel.app' : 'http://localhost:3000'
+// import.meta.env.PROD가 아니라 MODE를 봐야 한다 — PROD는 `vite build`면 --mode와 무관하게
+// 항상 true라, manifest.config.ts의 env.mode 기준 분기와 어긋난다(dev 빌드도 vercel로 열림).
+const WEBAPP_URL = import.meta.env.MODE === 'production' ? 'https://jobdiary.vercel.app' : 'http://localhost:3000'
 
 function sendCollectMessage(tabId: number): Promise<CollectResponse | undefined> {
   const request: CollectMessage = { type: COLLECT_MESSAGE_TYPE }
