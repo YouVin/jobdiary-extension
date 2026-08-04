@@ -15,6 +15,11 @@ const EMPTY_COUNTS: Record<Platform, number> = { saramin: 0, jobkorea: 0, wanted
 const RECOVERY_TIMEOUT_MS = 5000
 const RECOVERY_RETRY_ATTEMPTS = 3
 const RECOVERY_RETRY_INTERVAL_MS = 300
+// manifest.config.ts의 externally_connectable / src/background/index.ts의 ALLOWED_ORIGINS와
+// 반드시 같은 웹앱 주소를 유지한다. 프로덕션 빌드에선 localhost 대신 배포 주소로 연다.
+// import.meta.env.PROD가 아니라 MODE를 봐야 한다 — PROD는 `vite build`면 --mode와 무관하게
+// 항상 true라, manifest.config.ts의 env.mode 기준 분기와 어긋난다(dev 빌드도 vercel로 열림).
+const WEBAPP_URL = import.meta.env.MODE === 'production' ? 'https://jobdiary.vercel.app' : 'http://localhost:3000'
 
 function sendCollectMessage(tabId: number): Promise<CollectResponse | undefined> {
   const request: CollectMessage = { type: COLLECT_MESSAGE_TYPE }
@@ -162,6 +167,11 @@ export function App() {
     window.setTimeout(() => setCopyState('idle'), 2000)
   }
 
+  function handleOpenJobdiary() {
+    // ?import=1: 웹앱이 이 신호로 자동 가져오기(pull)를 트리거한다 (웹앱 쪽 감지는 범위 밖).
+    chrome.tabs.create({ url: `${WEBAPP_URL}/?import=1` })
+  }
+
   async function handleReset() {
     if (!resetConfirming) {
       setResetConfirming(true)
@@ -243,8 +253,7 @@ export function App() {
       </section>
 
       <section className="px-4 py-3">
-        {/* "취준일기 열기" 동작 로직은 E-5에서 연결. 지금은 시각적 배치만. */}
-        <Button variant="secondary">취준일기 열기</Button>
+        <Button variant="secondary" onClick={handleOpenJobdiary}>취준일기 열기</Button>
       </section>
     </div>
   )
