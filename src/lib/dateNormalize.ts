@@ -12,8 +12,12 @@ export function normalizeDate(raw: string): string {
 }
 
 // appliedAtExact 전용: "YYYY.MM.DD HH:mm" 또는 "YYYY.MM.DD HH:mm:ss" → 시각 포함 ISO.
-// appliedAt과 동일하게 wall-clock에 그대로 Z를 붙이는 단순화(타임존 미보정)를 쓴다 — INTEGRATION.md 참고.
+// appliedAt(날짜만, wall-clock에 Z를 붙이는 단순화)과 달리 여기는 실제 시각을 담으므로
+// 그대로 Z를 붙이면 안 된다 — 사이트가 주는 시각은 KST(UTC+9) wall-clock인데 그걸 UTC라고
+// 잘못 표기하면 실제보다 9시간 어긋난 시각(자정 근처는 날짜까지 밀림)으로 읽히게 된다.
+// 3사이트 모두 한국 사이트이므로 KST로 가정하고 실제 UTC로 변환해 Z를 붙인다.
 const EXACT_DATE_PATTERN = /^(\d{4})\.(\d{2})\.(\d{2}) (\d{2}):(\d{2})(?::(\d{2}))?$/;
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 export function normalizeDateExact(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
@@ -21,5 +25,9 @@ export function normalizeDateExact(raw: string | undefined): string | undefined 
   if (!match) return undefined;
 
   const [, year, month, day, hour, minute, second] = match;
-  return `${year}-${month}-${day}T${hour}:${minute}:${second ?? '00'}.000Z`;
+  const kstAsUtcMs = Date.UTC(
+    Number(year), Number(month) - 1, Number(day),
+    Number(hour), Number(minute), Number(second ?? '0'),
+  );
+  return new Date(kstAsUtcMs - KST_OFFSET_MS).toISOString();
 }

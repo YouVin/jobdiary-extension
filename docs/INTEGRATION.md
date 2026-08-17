@@ -91,7 +91,7 @@ function convertToApplication(
 }
 ```
 
-`appliedAtExact`는 `appliedAt`과 동일하게 wall-clock 값에 그대로 `Z`를 붙이는 단순화를 쓴다(타임존 미보정) — `appliedAt`과 같은 알려진 단순화이며, 정확한 타임존 변환이 필요해지면 그때 재검토한다.
+`appliedAtExact`는 `appliedAt`(날짜만, wall-clock에 그대로 `Z`를 붙이는 단순화)과 달리 실제 시각을 담으므로 그대로 `Z`를 붙이지 않는다. 3사이트 모두 한국 사이트라 사이트가 주는 시각을 KST(UTC+9) wall-clock으로 가정하고, 실제 UTC로 변환한 뒤 `Z`를 붙인다(`normalizeDateExact`). 단순히 Z만 붙이면 실제보다 9시간 어긋난 시각으로 읽히므로 이 변환은 필수다.
 
 > `apps`가 웹앱에 닿기까지의 구체적 경로(직접 호출이 불가능한 이유 포함)는 아래 "전달 제약"과 "전달 방식" 참고.
 
