@@ -15,13 +15,16 @@
 | 사람인 "지원완료"                             | `applied`      |
 | 잡코리아 "지원완료"                           | `applied`      |
 | 원티드 "접수"                                 | `applied`      |
-| 사람인 / 잡코리아 "불합격", "탈락"            | `rejected`     |
-| 원티드 "불합격"                               | `rejected`     |
 | "취소" 포함 텍스트 (사람인 "지원취소완료", 잡코리아 "지원취소") | `canceled` |
+| "불합격", "탈락" 포함 텍스트                  | `rejected`     |
+| "최종합격" 포함 텍스트                        | `offer`        |
+| "서류합격", "서류통과" 포함 텍스트            | `screening`    |
+| "면접완료" 포함 텍스트                        | `interviewed`  |
+| "면접" 포함 텍스트                            | `interview`    |
 | 그 외 매핑 실패                               | `applied` (기본값) |
 
-- "취소" 판정은 **부분 일치**다. 원문에 "취소"라는 문자열이 포함되면 `canceled`로 매핑한다.
-- `screening` / `interview` / `interviewed` / `offer`는 매핑 대상이 아니다. 3개 사이트 모두 실제 DOM 검증 결과 이 상태들을 원문으로 제공하지 않는다 — 유저가 웹앱에서 직접 상태를 변경해 관리한다. (기획 초기에는 "서류통과→screening" 등도 매핑 대상으로 가정했으나 실제 구현 단계에서 제외됨.)
+- 모든 판정은 **부분 일치**(`.includes`)다. `mapStatus`의 체크 순서는 더 구체적인 문자열을 먼저 검사하도록 고정돼 있다: 취소 → 불합격/탈락 → 최종합격 → 서류합격/서류통과 → 면접완료 → 면접 → (기본값) applied. 예: "최종합격"은 "서류합격"보다 먼저, "면접완료"는 "면접"보다 먼저 검사해야 오분류를 막는다.
+- 3개 사이트 모두 실제 DOM 검증 결과 이 상태 문자열들을 원문으로 제공하는 사이트도 있고 아닌 사이트도 있다 — 원문에 없으면 자연히 매핑되지 않고 유저가 웹앱에서 직접 상태를 변경해 관리한다.
 
 ---
 
@@ -81,9 +84,14 @@ function convertToApplication(
     status: mapStatus(scraped.status), // 원문 → Status (canceled 포함)
     appliedAt: normalizeDate(scraped.appliedAt), // → 자정 기준 ISO
     externalId: scraped.externalId, // 원티드는 undefined
+    viewed: scraped.viewed, // 열람 여부. 원티드는 undefined
+    appliedAtExact: normalizeDateExact(scraped.appliedAtExact), // 시각 포함 ISO. 시각 정보 없으면 undefined
+    url: scraped.url, // 공고 절대 URL. 원티드는 undefined
   };
 }
 ```
+
+`appliedAtExact`는 `appliedAt`과 동일하게 wall-clock 값에 그대로 `Z`를 붙이는 단순화를 쓴다(타임존 미보정) — `appliedAt`과 같은 알려진 단순화이며, 정확한 타임존 변환이 필요해지면 그때 재검토한다.
 
 > `apps`가 웹앱에 닿기까지의 구체적 경로(직접 호출이 불가능한 이유 포함)는 아래 "전달 제약"과 "전달 방식" 참고.
 
