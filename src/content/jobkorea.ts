@@ -3,6 +3,7 @@ import { JOBKOREA_SELECTORS } from './selectors/jobkorea';
 import type { ScrapedApplication } from '../types/application';
 import { convertToApplication } from '../lib/adapter';
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
+import { toSafeUrl } from '../lib/url';
 
 // "20260601235538" (YYYYMMDDHHmmss, 14자리 숫자) → "2026.06.01 23:55" (사람인 포맷과 통일)
 function formatApplyDate(raw: string | undefined): string {
@@ -42,7 +43,7 @@ export function parseJobkorea(): ScrapedApplication[] {
     const dataButton = row.querySelector<HTMLElement>(JOBKOREA_SELECTORS.dataButton);
     // url/viewed는 버튼 유무와 무관하게 행 본문에서 읽는다(두 형식 모두 동일 위치).
     const href = row.querySelector<HTMLAnchorElement>(JOBKOREA_SELECTORS.url)?.getAttribute('href');
-    const url = href ? new URL(href, location.origin).toString() : undefined;
+    const url = toSafeUrl(href, location.origin);
     const viewed = parseViewed(row.querySelector(JOBKOREA_SELECTORS.viewed)?.textContent?.trim());
 
     if (dataButton) {

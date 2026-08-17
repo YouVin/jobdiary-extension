@@ -3,6 +3,7 @@ import { SARAMIN_SELECTORS } from './selectors/saramin';
 import type { ScrapedApplication } from '../types/application';
 import { convertToApplication } from '../lib/adapter';
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
+import { toSafeUrl } from '../lib/url';
 
 // .txt_sub는 지원완료 행에선 "미열람"/"열람"이지만 지원취소완료 행에선 취소일시가 들어온다.
 // 텍스트가 정확히 이 둘 중 하나일 때만 viewed로 쓰고, 아니면 undefined로 둔다.
@@ -38,7 +39,7 @@ export function parseSaramin(): ScrapedApplication[] {
       externalId,
       viewed: parseViewed(subStatusText),
       appliedAtExact: appliedAt || undefined,
-      url: href ? new URL(href, location.origin).toString() : undefined,
+      url: toSafeUrl(href, location.origin),
     };
   });
 }

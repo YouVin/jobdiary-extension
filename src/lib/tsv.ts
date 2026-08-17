@@ -1,4 +1,5 @@
 import type { Application, Status } from '@/types/application';
+import { toSafeUrl } from './url';
 
 // docs/INTEGRATION.md status 매핑의 역방향(표시용). 지금 collect 흐름에서 mapStatus가
 // 실제로 만드는 값은 applied/rejected/canceled뿐이지만, Application.status 타입 전체를
@@ -66,11 +67,14 @@ export function applicationsToHtml(
   const headCells = TSV_HEADER.map(label => `<th>${escapeHtml(label)}</th>`).join('');
   const bodyRows = applications
     .map((app) => {
+      // 파서 단계에서 이미 http(s)만 통과시키지만, HTML로 실행 가능한 href를 만드는 지점이라
+      // javascript:/data: 등 위험한 스킴이 어떤 경로로든 섞여 들어오지 않도록 여기서도 재검증한다.
+      const safeUrl = toSafeUrl(app.url);
       const cells = toRow(app)
         .map((cell, index) => {
           const escaped = escapeHtml(cell);
-          if (index === COMPANY_CELL_INDEX && app.url) {
-            return `<td><a href="${escapeHtml(app.url)}">${escaped}</a></td>`;
+          if (index === COMPANY_CELL_INDEX && safeUrl) {
+            return `<td><a href="${escapeHtml(safeUrl)}">${escaped}</a></td>`;
           }
           return `<td>${escaped}</td>`;
         })
