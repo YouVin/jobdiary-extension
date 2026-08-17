@@ -67,9 +67,20 @@ document.querySelectorAll(".row._apply_list").forEach((row) => {
   const company = row.dataset.company_nm;
   // 점핏 연동 공고는 rec_division이 빈 문자열이라 recruittitle로 폴백한다.
   const position = row.dataset.rec_division || row.dataset.recruittitle;
-  const appliedAt = row.querySelector(".col_date")?.textContent?.trim();
+  const appliedAt = row.querySelector(".col_date")?.textContent?.trim(); // "2026.06.09 20:27"
+  const appliedAtExact = appliedAt; // 이미 시각까지 포함돼 있어 그대로 exact로도 쓴다
   const status = row.querySelector(".txt_status")?.textContent?.trim();
   const externalId = row.dataset.recruitapply_idx;
+
+  // ★주의: 지원취소완료 행에선 .txt_sub에 취소일시("2026.07.12 19:33")가 들어온다.
+  // 텍스트가 정확히 '열람'/'미열람'일 때만 viewed로 쓰고, 아니면 undefined.
+  const subStatusText = row.querySelector(".txt_sub")?.textContent?.trim();
+  const viewed =
+    subStatusText === "열람" ? true : subStatusText === "미열람" ? false : undefined;
+
+  // .recruit a의 href는 상대경로라 절대화해서 쓴다.
+  const href = row.querySelector(".recruit a")?.getAttribute("href");
+  const url = href ? new URL(href, location.origin).toString() : undefined;
 });
 ```
 
@@ -122,11 +133,19 @@ document.querySelectorAll("tr").forEach((row) => {
     .querySelector(".apply-status .item.status")
     ?.textContent?.trim();
 
+  // url/viewed는 버튼 유무와 무관하게 두 분기(최신/오래된) 모두 행 본문에서 공통으로 읽는다.
+  const href = row.querySelector(".description a")?.getAttribute("href");
+  const url = href ? new URL(href, location.origin).toString() : undefined;
+  const readingText = row.querySelector(".reading")?.textContent?.trim();
+  const viewed =
+    readingText === "열람" ? true : readingText === "미열람" ? false : undefined;
+
   if (dataBtn) {
     // 최신 지원: 버튼 data 속성 그대로 사용.
     const company = dataBtn.dataset.memname; // 드물게 괄호 등 원본 데이터가 깨져 있을 수 있음
     const position = dataBtn.dataset.gititle; // 깔끔한 버전
-    const appliedAtRaw = dataBtn.dataset.applydate; // "20260601235538" (YYYYMMDDHHmmss)
+    const appliedAtRaw = dataBtn.dataset.applydate; // "20260601235538" (YYYYMMDDHHmmss) → "2026.06.01 23:55"로 변환해 appliedAt에 씀
+    const appliedAtExact = dataBtn.dataset.applydate; // 같은 원본을 초까지 살려 "2026.06.01 23:55:38"로 변환해 씀
     const externalId = dataBtn.dataset.idx;
     return;
   }
@@ -139,6 +158,7 @@ document.querySelectorAll("tr").forEach((row) => {
 
   const position = row.querySelector(".description a")?.textContent?.trim();
   const appliedAtRaw = row.querySelector(".apply-status .date")?.textContent?.trim(); // "2026.04.01"
+  const appliedAtExact = undefined; // 폴백 경로는 시각 정보 자체가 없어 exact로 쓸 게 없음
   const externalId = oldBtn?.dataset.idx;
 });
 ```
