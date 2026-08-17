@@ -7,6 +7,9 @@ export interface ScrapedApplication {
   appliedAt: string; // 지원일 (원문)
   status: string; // 상태 (원문)
   externalId?: string; // 사이트 고유 ID (중복 방지)
+  viewed?: boolean; // 열람 여부
+  appliedAtExact?: string; // 지원일 (시각 포함 원문)
+  url?: string; // 공고 절대 URL
 }
 
 // 웹앱과 공유하는 계약. 최종 진실은 웹앱 레포 docs/INTEGRATION.md (docs/INTEGRATION.md 참고).
@@ -28,4 +31,7 @@ export interface Application {
   appliedAt: string; // 자정 기준 ISO
   updatedAt: string; // ISO
   externalId?: string; // 원티드는 없음
+  viewed?: boolean; // 열람 여부
+  appliedAtExact?: string; // 지원일 (시각 포함 ISO)
+  url?: string; // 공고 절대 URL
 }

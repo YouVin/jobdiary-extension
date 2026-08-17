@@ -13,11 +13,18 @@ const STATUS_LABEL: Record<Status, string> = {
   canceled: '지원취소',
 };
 
-const TSV_HEADER = ['회사', '포지션', '상태', '지원일', '플랫폼'];
+const TSV_HEADER = ['회사', '포지션', '상태', '지원일', '플랫폼', '열람'];
 
 // 탭/개행이 셀 안에 섞이면 TSV 구조가 깨지므로 공백으로 치환한다.
 function sanitizeCell(value: string): string {
   return value.replace(/[\t\r\n]+/g, ' ').trim();
+}
+
+// viewed: true→"열람", false→"미열람", undefined(정보 없음)→"".
+function viewedLabel(viewed: boolean | undefined): string {
+  if (viewed === true) return '열람';
+  if (viewed === false) return '미열람';
+  return '';
 }
 
 function toRow(app: Omit<Application, 'id' | 'updatedAt'>): string[] {
@@ -27,6 +34,7 @@ function toRow(app: Omit<Application, 'id' | 'updatedAt'>): string[] {
     STATUS_LABEL[app.status],
     app.appliedAt.slice(0, 10), // "2026-06-09T00:00:00.000Z" → "2026-06-09"
     app.platform,
+    viewedLabel(app.viewed),
   ];
 }
 
@@ -47,6 +55,9 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+// 회사 셀(0번 인덱스)에 해당하는 열 위치. url이 있으면 이 셀만 <a href>로 감싼다.
+const COMPANY_CELL_INDEX = 0;
+
 // 노션/워드 등 리치 텍스트 붙여넣기가 표로 인식하도록 하는 HTML 표.
 // 값은 TSV와 같은 sanitizeCell(탭/개행 제거)을 거친 뒤 escapeHtml로 XSS/마크업 깨짐을 막는다.
 export function applicationsToHtml(
@@ -55,7 +66,15 @@ export function applicationsToHtml(
   const headCells = TSV_HEADER.map(label => `<th>${escapeHtml(label)}</th>`).join('');
   const bodyRows = applications
     .map((app) => {
-      const cells = toRow(app).map(cell => `<td>${escapeHtml(cell)}</td>`).join('');
+      const cells = toRow(app)
+        .map((cell, index) => {
+          const escaped = escapeHtml(cell);
+          if (index === COMPANY_CELL_INDEX && app.url) {
+            return `<td><a href="${escapeHtml(app.url)}">${escaped}</a></td>`;
+          }
+          return `<td>${escaped}</td>`;
+        })
+        .join('');
       return `<tr>${cells}</tr>`;
     })
     .join('');

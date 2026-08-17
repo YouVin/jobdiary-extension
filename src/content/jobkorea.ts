@@ -15,12 +15,35 @@ function formatApplyDate(raw: string | undefined): string {
   return `${year}.${month}.${day} ${hour}:${minute}`;
 }
 
+// formatApplyDate와 같은 원본이지만 초까지 살려 exact용으로 쓴다. "2026.06.01 23:55:38"
+function formatApplyDateExact(raw: string | undefined): string | undefined {
+  if (!raw || !/^\d{14}$/.test(raw)) return undefined;
+  const year = raw.slice(0, 4);
+  const month = raw.slice(4, 6);
+  const day = raw.slice(6, 8);
+  const hour = raw.slice(8, 10);
+  const minute = raw.slice(10, 12);
+  const second = raw.slice(12, 14);
+  return `${year}.${month}.${day} ${hour}:${minute}:${second}`;
+}
+
+// '.reading' 텍스트가 정확히 "미열람"/"열람"일 때만 viewed로 쓰고, 아니면 undefined로 둔다.
+function parseViewed(readingText: string | undefined): boolean | undefined {
+  if (readingText === '열람') return true;
+  if (readingText === '미열람') return false;
+  return undefined;
+}
+
 export function parseJobkorea(): ScrapedApplication[] {
   const rows = document.querySelectorAll<HTMLElement>(JOBKOREA_SELECTORS.container);
   const results: ScrapedApplication[] = [];
 
   rows.forEach((row) => {
     const dataButton = row.querySelector<HTMLElement>(JOBKOREA_SELECTORS.dataButton);
+    // url/viewed는 버튼 유무와 무관하게 행 본문에서 읽는다(두 형식 모두 동일 위치).
+    const href = row.querySelector<HTMLAnchorElement>(JOBKOREA_SELECTORS.url)?.getAttribute('href');
+    const url = href ? new URL(href, location.origin).toString() : undefined;
+    const viewed = parseViewed(row.querySelector(JOBKOREA_SELECTORS.viewed)?.textContent?.trim());
 
     if (dataButton) {
       // 최신 형식(devBtnDel/devBtnCancel): 버튼 data 속성 그대로 사용 — 기존 동작 그대로 유지.
@@ -31,6 +54,9 @@ export function parseJobkorea(): ScrapedApplication[] {
         appliedAt: formatApplyDate(dataButton.dataset[JOBKOREA_SELECTORS.appliedAtAttr]),
         status: row.querySelector(JOBKOREA_SELECTORS.status)?.textContent?.trim() ?? '',
         externalId: dataButton.dataset[JOBKOREA_SELECTORS.externalIdAttr],
+        viewed,
+        appliedAtExact: formatApplyDateExact(dataButton.dataset[JOBKOREA_SELECTORS.appliedAtAttr]),
+        url,
       });
       return;
     }
@@ -49,6 +75,10 @@ export function parseJobkorea(): ScrapedApplication[] {
       appliedAt: row.querySelector(JOBKOREA_SELECTORS.appliedAtFallback)?.textContent?.trim() ?? '',
       status: row.querySelector(JOBKOREA_SELECTORS.status)?.textContent?.trim() ?? '',
       externalId: oldDataButton?.dataset[JOBKOREA_SELECTORS.externalIdAttr],
+      viewed,
+      // 폴백 경로의 appliedAt은 시각이 없는 날짜 텍스트("2026.04.01")라 exact로 쓸 게 없다.
+      appliedAtExact: undefined,
+      url,
     });
   });
 

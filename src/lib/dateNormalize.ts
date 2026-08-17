@@ -10,3 +10,16 @@ export function normalizeDate(raw: string): string {
   const [, year, month, day] = match;
   return `${year}-${month}-${day}T00:00:00.000Z`;
 }
+
+// appliedAtExact 전용: "YYYY.MM.DD HH:mm" 또는 "YYYY.MM.DD HH:mm:ss" → 시각 포함 ISO.
+// appliedAt과 동일하게 wall-clock에 그대로 Z를 붙이는 단순화(타임존 미보정)를 쓴다 — INTEGRATION.md 참고.
+const EXACT_DATE_PATTERN = /^(\d{4})\.(\d{2})\.(\d{2}) (\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+export function normalizeDateExact(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const match = raw.match(EXACT_DATE_PATTERN);
+  if (!match) return undefined;
+
+  const [, year, month, day, hour, minute, second] = match;
+  return `${year}-${month}-${day}T${hour}:${minute}:${second ?? '00'}.000Z`;
+}

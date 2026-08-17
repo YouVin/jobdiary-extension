@@ -4,6 +4,14 @@ import type { ScrapedApplication } from '../types/application';
 import { convertToApplication } from '../lib/adapter';
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
 
+// .txt_sub는 지원완료 행에선 "미열람"/"열람"이지만 지원취소완료 행에선 취소일시가 들어온다.
+// 텍스트가 정확히 이 둘 중 하나일 때만 viewed로 쓰고, 아니면 undefined로 둔다.
+function parseViewed(subStatusText: string | undefined): boolean | undefined {
+  if (subStatusText === '열람') return true;
+  if (subStatusText === '미열람') return false;
+  return undefined;
+}
+
 export function parseSaramin(): ScrapedApplication[] {
   const rows = document.querySelectorAll<HTMLElement>(SARAMIN_SELECTORS.container);
 
@@ -14,9 +22,12 @@ export function parseSaramin(): ScrapedApplication[] {
     const position = row.dataset[SARAMIN_SELECTORS.positionAttr]
       || row.dataset[SARAMIN_SELECTORS.positionFallbackAttr]
       || '';
+    // 이미 시각까지 포함된 텍스트("2026.05.28 17:57")라 appliedAt/appliedAtExact 둘 다에 쓴다.
     const appliedAt = row.querySelector(SARAMIN_SELECTORS.appliedAt)?.textContent?.trim() ?? '';
     const status = row.querySelector(SARAMIN_SELECTORS.status)?.textContent?.trim() ?? '';
     const externalId = row.dataset[SARAMIN_SELECTORS.externalIdAttr];
+    const subStatusText = row.querySelector(SARAMIN_SELECTORS.subStatus)?.textContent?.trim();
+    const href = row.querySelector<HTMLAnchorElement>(SARAMIN_SELECTORS.url)?.getAttribute('href');
 
     return {
       company,
@@ -25,6 +36,9 @@ export function parseSaramin(): ScrapedApplication[] {
       appliedAt,
       status,
       externalId,
+      viewed: parseViewed(subStatusText),
+      appliedAtExact: appliedAt || undefined,
+      url: href ? new URL(href, location.origin).toString() : undefined,
     };
   });
 }
