@@ -25,9 +25,25 @@ export function normalizeDateExact(raw: string | undefined): string | undefined 
   if (!match) return undefined;
 
   const [, year, month, day, hour, minute, second] = match;
-  const kstAsUtcMs = Date.UTC(
-    Number(year), Number(month) - 1, Number(day),
-    Number(hour), Number(minute), Number(second ?? '0'),
-  );
+  const y = Number(year);
+  const mo = Number(month);
+  const d = Number(day);
+  const h = Number(hour);
+  const mi = Number(minute);
+  const s = Number(second ?? '0');
+
+  // EXACT_DATE_PATTERN은 자릿수만 검사하므로 "2026.02.31 25:61" 같은 값도 매치된다.
+  // Date.UTC는 범위를 벗어난 필드를 조용히 다음 달/시/분으로 이월시키므로(예: 2월 31일 → 3월 3일),
+  // 구성한 날짜의 각 필드를 원본 입력값과 왕복 비교해 이월이 발생했으면(=원래 값이 무효였으면) undefined로 막는다.
+  const kstAsUtcMs = Date.UTC(y, mo - 1, d, h, mi, s);
+  const roundTrip = new Date(kstAsUtcMs);
+  const isValid = roundTrip.getUTCFullYear() === y
+    && roundTrip.getUTCMonth() === mo - 1
+    && roundTrip.getUTCDate() === d
+    && roundTrip.getUTCHours() === h
+    && roundTrip.getUTCMinutes() === mi
+    && roundTrip.getUTCSeconds() === s;
+  if (!isValid) return undefined;
+
   return new Date(kstAsUtcMs - KST_OFFSET_MS).toISOString();
 }
