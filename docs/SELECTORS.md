@@ -18,6 +18,9 @@ interface ScrapedApplication {
   appliedAt: string; // 지원일
   status: string; // 지원 상태 (원문)
   externalId?: string; // 사이트 고유 ID (중복 방지용)
+  viewed?: boolean; // 열람 여부. 원티드는 없음
+  appliedAtExact?: string; // 지원일 (시각 포함 원문). 시각 정보가 없으면 없음
+  url?: string; // 공고 절대 URL. 원티드는 없음
 }
 ```
 
@@ -53,8 +56,9 @@ https://www.saramin.co.kr/zf_user/mypage/apply-status (예상)
 | 공고명   | `[data-rec_division]` 속성값, 비어있으면 `[data-recruittitle]` 폴백 | `row.dataset.rec_division \|\| row.dataset.recruittitle`. 점핏 연동 공고는 전자가 빈 문자열 |
 | 지원일   | `.col_date` 텍스트                                  | "2026.06.09 20:27"                                                   |
 | 상태     | `.txt_status` 텍스트                                | "지원완료" 등                                                        |
-| 세부상태 | `.txt_sub` 텍스트                                   | "미열람" 등                                                          |
+| 세부상태 | `.txt_sub` 텍스트                                   | "미열람" 등. ★주의: 지원취소완료 행에선 이 칸에 취소일시("2026.07.12 19:33")가 들어온다. 텍스트가 정확히 '열람'/'미열람'일 때만 viewed로 쓰고, 아니면 undefined |
 | 고유ID   | `[data-recruitapply_idx]`                           | 중복 방지                                                            |
+| 공고 URL | `.recruit a` 의 `href`                              | 상대경로 — `new URL(href, location.origin)`로 절대화                |
 
 ### 예시 코드
 
@@ -63,9 +67,20 @@ document.querySelectorAll(".row._apply_list").forEach((row) => {
   const company = row.dataset.company_nm;
   // 점핏 연동 공고는 rec_division이 빈 문자열이라 recruittitle로 폴백한다.
   const position = row.dataset.rec_division || row.dataset.recruittitle;
-  const appliedAt = row.querySelector(".col_date")?.textContent?.trim();
+  const appliedAt = row.querySelector(".col_date")?.textContent?.trim(); // "2026.06.09 20:27"
+  const appliedAtExact = appliedAt; // 이미 시각까지 포함돼 있어 그대로 exact로도 쓴다
   const status = row.querySelector(".txt_status")?.textContent?.trim();
   const externalId = row.dataset.recruitapply_idx;
+
+  // ★주의: 지원취소완료 행에선 .txt_sub에 취소일시("2026.07.12 19:33")가 들어온다.
+  // 텍스트가 정확히 '열람'/'미열람'일 때만 viewed로 쓰고, 아니면 undefined.
+  const subStatusText = row.querySelector(".txt_sub")?.textContent?.trim();
+  const viewed =
+    subStatusText === "열람" ? true : subStatusText === "미열람" ? false : undefined;
+
+  // .recruit a의 href는 상대경로라 절대화해서 쓴다.
+  const href = row.querySelector(".recruit a")?.getAttribute("href");
+  const url = href ? new URL(href, location.origin).toString() : undefined;
 });
 ```
 
@@ -104,8 +119,9 @@ document.querySelectorAll(".row._apply_list").forEach((row) => {
 | 지원일   | `[data-applydate]`, 없으면 `.apply-status .date` | 버튼 데이터는 "20260601235538"(YYYYMMDDHHmmss) 고정 포맷. 본문 폴백은 "2026.04.01"(YYYY.MM.DD) |
 | 상태     | `.apply-status .item.status` 텍스트 | "지원취소", "지원완료" 등. 버튼 유무와 무관하게 항상 본문에서 읽음                              |
 | 진행상태 | `.apply-progress .status` 텍스트    | "진행중" 등                                                                                     |
-| 열람여부 | `.reading .read-not`                | "미열람"                                                                                        |
+| 열람여부 | `.reading` 텍스트                   | "미열람"/"열람". 클래스(`read-not`)가 아니라 텍스트로 판별한다                                   |
 | 고유ID   | `[data-idx]`                        | 중복 방지. `.devBtnDel`/`.devBtnCancel`(최신) 또는 `.devBtnOldDel`(오래된 지원) 버튼에서 읽음   |
+| 공고 URL | `.description a` 의 `href`          | 상대경로 — `new URL(href, location.origin)`로 절대화                                            |
 
 ### 예시 코드
 
@@ -117,11 +133,19 @@ document.querySelectorAll("tr").forEach((row) => {
     .querySelector(".apply-status .item.status")
     ?.textContent?.trim();
 
+  // url/viewed는 버튼 유무와 무관하게 두 분기(최신/오래된) 모두 행 본문에서 공통으로 읽는다.
+  const href = row.querySelector(".description a")?.getAttribute("href");
+  const url = href ? new URL(href, location.origin).toString() : undefined;
+  const readingText = row.querySelector(".reading")?.textContent?.trim();
+  const viewed =
+    readingText === "열람" ? true : readingText === "미열람" ? false : undefined;
+
   if (dataBtn) {
     // 최신 지원: 버튼 data 속성 그대로 사용.
     const company = dataBtn.dataset.memname; // 드물게 괄호 등 원본 데이터가 깨져 있을 수 있음
     const position = dataBtn.dataset.gititle; // 깔끔한 버전
-    const appliedAtRaw = dataBtn.dataset.applydate; // "20260601235538" (YYYYMMDDHHmmss)
+    const appliedAtRaw = dataBtn.dataset.applydate; // "20260601235538" (YYYYMMDDHHmmss) → "2026.06.01 23:55"로 변환해 appliedAt에 씀
+    const appliedAtExact = dataBtn.dataset.applydate; // 같은 원본을 초까지 살려 "2026.06.01 23:55:38"로 변환해 씀
     const externalId = dataBtn.dataset.idx;
     return;
   }
@@ -134,6 +158,7 @@ document.querySelectorAll("tr").forEach((row) => {
 
   const position = row.querySelector(".description a")?.textContent?.trim();
   const appliedAtRaw = row.querySelector(".apply-status .date")?.textContent?.trim(); // "2026.04.01"
+  const appliedAtExact = undefined; // 폴백 경로는 시각 정보 자체가 없어 exact로 쓸 게 없음
   const externalId = oldBtn?.dataset.idx;
 });
 ```
@@ -165,17 +190,19 @@ li[class*="table_tr"]   (해시 무시하고 부분매칭)
 
 ### 셀렉터 (부분매칭 필수)
 
-| 데이터 | 셀렉터                           | 비고                                                                 |
-| ------ | -------------------------------- | -------------------------------------------------------------------- |
-| 회사명 | `[class*="company_name"]` 텍스트 | "무론"                                                               |
-| 공고명 | `[class*="position"]` 텍스트     | "프론트엔드 개발자"                                                  |
-| 지원일 | `[class*="create_time"]` 텍스트  | "2026. 7. 11" (정규화: "2026.07.11")                                 |
-| 상태   | `[class*="status"]` 텍스트       | "불합격", "진행중" 등                                                |
-| 고유ID | 없음                             | `<li>` 안에 지원건 식별 data 속성/링크 없음. `externalId` 빈 값 처리 |
+| 데이터 | 셀렉터                              | 비고                                                                 |
+| ------ | ------------------------------------ | -------------------------------------------------------------------- |
+| 회사명 | `[class*="td_company_name"]` 텍스트 | "무론". `td_` 프리픽스까지 좁혀 오매칭 방지                          |
+| 공고명 | `[class*="td_position"]` 텍스트     | "프론트엔드 개발자"                                                  |
+| 지원일 | `[class*="td_create_time"]` 텍스트  | "2026. 7. 11" (정규화: "2026.07.11")                                 |
+| 상태   | `[class*="td_status"]` 텍스트       | "불합격", "진행중" 등                                                |
+| 고유ID | 없음                                 | `<li>` 안에 지원건 식별 data 속성/링크 없음. `externalId` 빈 값 처리 |
+| 공고 URL | 없음                               | 행에 공고 링크 없음 → `undefined`                                    |
+| 열람여부 | 없음                               | 원티드 DOM에 열람 정보 없음 → `undefined`                            |
 
 ### ⚠️ 주의: 해시 클래스
 
-원티드 class는 `List_List_table_td_company_name__u5tEF`처럼 뒤에 해시(`__u5tEF`)가 붙는다. 이 해시는 사이트 빌드 시 바뀔 수 있으므로 **전체 class를 쓰지 말고 `[class*="company_name"]` 부분매칭**을 사용한다.
+원티드 class는 `List_List_table_td_company_name__u5tEF`처럼 뒤에 해시(`__u5tEF`)가 붙는다. 이 해시는 사이트 빌드 시 바뀔 수 있으므로 **전체 class를 쓰지 말고 `[class*="td_company_name"]` 부분매칭**을 사용한다. `td_` 프리픽스까지 포함해야 다른 영역(헤더 등)의 동일 접미사 class와 오매칭되지 않는다.
 
 ### 예시 코드
 
@@ -183,16 +210,18 @@ li[class*="table_tr"]   (해시 무시하고 부분매칭)
 // React SPA라 페이지 로드 직후엔 목록이 비어 있을 수 있음 — 파싱 시점 확인 필요
 document.querySelectorAll('li[class*="table_tr"]').forEach((row) => {
   const company = row
-    .querySelector('[class*="company_name"]')
+    .querySelector('[class*="td_company_name"]')
     ?.textContent?.trim();
   const position = row
-    .querySelector('[class*="position"]')
+    .querySelector('[class*="td_position"]')
     ?.textContent?.trim();
   const appliedAtRaw = row
-    .querySelector('[class*="create_time"]')
+    .querySelector('[class*="td_create_time"]')
     ?.textContent?.trim(); // "2026. 7. 11" → 정규화 필요 ("2026.07.11")
-  const status = row.querySelector('[class*="status"]')?.textContent?.trim();
+  const status = row.querySelector('[class*="td_status"]')?.textContent?.trim();
   const externalId = undefined; // 원티드는 지원건 고유 ID가 없음
+  const url = undefined; // 행에 공고 링크 없음
+  const viewed = undefined; // 원티드 DOM에 열람 정보 없음
 });
 ```
 

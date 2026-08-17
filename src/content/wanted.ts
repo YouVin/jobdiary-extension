@@ -34,6 +34,9 @@ export function parseWanted(): ScrapedApplication[] {
       appliedAt: normalizeAppliedAt(appliedAtRaw),
       status,
       externalId: undefined, // 원티드는 지원건 고유 ID가 없음
+      viewed: undefined, // 원티드 DOM에 열람 정보 없음
+      appliedAtExact: undefined, // 날짜만 제공되고 시각이 없어 exact로 쓸 게 없음
+      url: undefined, // 행에 공고 링크 없음
     });
   });
 

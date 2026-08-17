@@ -21,4 +21,8 @@ export const JOBKOREA_SELECTORS = {
   companyFallback: '.company a',
   positionFallback: '.description a',
   appliedAtFallback: '.apply-status .date',
+  // 공고 링크 (상대경로) — new URL(href, location.origin)로 절대화해서 쓴다
+  url: '.description a',
+  // 열람 여부 텍스트("미열람"/"열람") — 클래스(read-not)가 아니라 텍스트로 판별한다
+  viewed: '.reading',
 } as const;
