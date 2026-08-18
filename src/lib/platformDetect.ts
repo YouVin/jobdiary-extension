@@ -1,8 +1,8 @@
 import type { Platform } from '@/types/application';
 
-// manifest.config.ts의 host_permissions/content_scripts matches와 반드시 같은 사이트·경로
-// 범위를 유지한다 (그쪽이 바뀌면 여기도 같이 바꿔야 한다). 특히 사람인은 여기·host_permissions·
-// content_scripts 세 곳이 문자 그대로 일치해야 한다:
+// manifest.config.ts의 content_scripts.matches와 반드시 같은 사이트·경로 범위를 유지한다
+// (그쪽이 바뀌면 여기도 같이 바꿔야 한다). host_permissions는 오리진 단위라 경로 정보가
+// 없으므로 동기화 대상이 아니다 — 실제 경로 제한(및 여기와의 동기화)은 content_scripts만 담당:
 //   사람인:   https://*.saramin.co.kr/zf_user/mypage/*
 //   잡코리아: https://(www.)jobkorea.co.kr/User/*
 //   원티드:   https://(www.)wanted.co.kr/status/*
