@@ -25,20 +25,29 @@ export default defineManifest((env) => ({
       : ['http://localhost:3000/*', 'https://jobdiary.vercel.app/*'],
   },
   permissions: ['storage'],
+  // host_permissions는 스킴+호스트 단위로만 권한을 부여한다 — 경로(path)는 문법상
+  // 받아들여지긴 해도 Chrome이 실제 권한 범위 판정에는 반영하지 않는다. 즉 아래는
+  // 각 사이트 "오리진 전체"에 대한 host access이고, 경로로 좁힌 게 아니다(좁힌 것처럼
+  // 경로를 적어두면 실제 권한 범위를 오해하게 만들 뿐이라 오리진만 남긴다).
+  // 실제 경로 제한은 host_permissions가 아니라 아래 두 곳이 담당한다:
+  //   1) content_scripts.matches — 어느 경로에 스크립트를 주입할지 (경로까지 실제로 강제됨)
+  //   2) src/lib/platformDetect.ts — 런타임에 pathname을 검사해 지원 플랫폼인지 판정
   host_permissions: [
     'https://*.saramin.co.kr/*',
-    'https://www.jobkorea.co.kr/User/*',
-    'https://jobkorea.co.kr/User/*',
-    'https://www.wanted.co.kr/status/*',
-    'https://wanted.co.kr/status/*',
+    'https://www.jobkorea.co.kr/*',
+    'https://jobkorea.co.kr/*',
+    'https://www.wanted.co.kr/*',
+    'https://wanted.co.kr/*',
   ],
   background: {
     service_worker: 'src/background/index.ts',
     type: 'module',
   },
   content_scripts: [{
+    // 실제 경로 제한은 여기서 이뤄진다. src/lib/platformDetect.ts의 saramin 분기(pathname
+    // 검사)와 경로가 문자 그대로 동일해야 한다 — host_permissions는 오리진만 봐서 대상 아님.
     js: ['src/content/saramin.ts'],
-    matches: ['https://*.saramin.co.kr/*'],
+    matches: ['https://*.saramin.co.kr/zf_user/mypage/*'],
   }, {
     js: ['src/content/jobkorea.ts'],
     matches: [

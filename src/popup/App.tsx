@@ -9,7 +9,19 @@ import { applicationsToHtml, applicationsToTsv } from '@/lib/tsv'
 import { Button } from './components/Button'
 import { PLATFORM_LABEL, PlatformBadge } from './components/PlatformBadge'
 
-const UNSUPPORTED_SITE_MESSAGE = '이 페이지에서는 수집할 수 없어요'
+const UNSUPPORTED_MESSAGE = '지원현황 페이지에서 눌러주세요'
+const COLLECT_FAILED_MESSAGE = '수집에 실패했어요. 새로고침 후 다시 시도해 주세요'
+const EMPTY_RESULT_MESSAGE = '이 페이지에서 지원내역을 찾지 못했어요. 목록을 불러온 뒤 다시 시도해 주세요'
+
+// (a) 미지원 페이지 안내에 쓰는 바로가기. jobkorea는 "입사지원현황" 딱 그 페이지의 확정된
+// URL이 없어(SELECTORS.md 참고) 마이페이지까지만 안내한다. saramin/wanted는 SELECTORS.md에
+// 문서화된 지원현황 페이지 URL 그대로.
+const SITE_APPLY_STATUS_LINKS: Array<{ platform: Platform, label: string, url: string }> = [
+  { platform: 'saramin', label: `${PLATFORM_LABEL.saramin} 지원현황`, url: 'https://www.saramin.co.kr/zf_user/mypage/apply-status' },
+  { platform: 'jobkorea', label: `${PLATFORM_LABEL.jobkorea} 마이페이지`, url: 'https://www.jobkorea.co.kr' },
+  { platform: 'wanted', label: `${PLATFORM_LABEL.wanted} 지원현황`, url: 'https://www.wanted.co.kr/status/applications/applied' },
+]
+
 const PLATFORM_ORDER: Platform[] = ['saramin', 'jobkorea', 'wanted']
 const EMPTY_COUNTS: Record<Platform, number> = { saramin: 0, jobkorea: 0, wanted: 0 }
 const RECOVERY_TIMEOUT_MS = 5000
@@ -46,7 +58,13 @@ type CollectState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'success', count: number }
-  | { status: 'error', message: string }
+  // (c) 0건 수집: 응답은 왔지만 count === 0. 에러가 아니라 "찾지 못함" — 파서 미스인지
+  // 진짜 0건인지 유저가 구분할 수 있게 별도 상태로 둔다.
+  | { status: 'empty' }
+  // (a) 미지원 페이지: platform이 애초에 감지되지 않음.
+  | { status: 'unsupported' }
+  // (b) 수집 실패: platform은 감지됐지만 tab.id 없음 / 복구 후에도 응답 없음 / 예외.
+  | { status: 'error' }
 
 type CopyState = 'idle' | 'copied' | 'error'
 
@@ -104,7 +122,7 @@ export function App() {
     setRecovering(false)
 
     if (!platform) {
-      setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
+      setCollectState({ status: 'unsupported' })
       return
     }
 
@@ -113,7 +131,7 @@ export function App() {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
       if (!tab?.id) {
-        setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
+        setCollectState({ status: 'error' })
         return
       }
 
@@ -137,17 +155,24 @@ export function App() {
       }
 
       if (!response) {
-        setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
+        setCollectState({ status: 'error' })
         return
       }
 
+      // 저장 흐름은 그대로: 0건이어도 다른 사이트들과 동일하게 저장/현황 갱신한다.
+      // 상태 표시만 'empty'로 분기해 "파서 미스 가능성"을 알린다.
       await saveSiteApplications(platform, response.applications)
       await refreshSiteCounts()
 
-      setCollectState({ status: 'success', count: response.count })
+      if (response.count === 0) {
+        setCollectState({ status: 'empty' })
+      }
+      else {
+        setCollectState({ status: 'success', count: response.count })
+      }
     }
     catch {
-      setCollectState({ status: 'error', message: UNSUPPORTED_SITE_MESSAGE })
+      setCollectState({ status: 'error' })
     }
     finally {
       setRecovering(false)
@@ -211,8 +236,30 @@ export function App() {
             건 수집됨
           </p>
         )}
+        {collectState.status === 'empty' && (
+          <p className="text-sm text-text-muted">{EMPTY_RESULT_MESSAGE}</p>
+        )}
+        {collectState.status === 'unsupported' && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-text-secondary">{UNSUPPORTED_MESSAGE}</p>
+            <div className="flex flex-col gap-0.5">
+              {SITE_APPLY_STATUS_LINKS.map(link => (
+                <button
+                  key={link.platform}
+                  type="button"
+                  onClick={() => chrome.tabs.create({ url: link.url })}
+                  className="text-left text-sm text-brand hover:text-brand-hover hover:underline"
+                >
+                  {link.label}
+                  {' '}
+                  바로가기
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {collectState.status === 'error' && (
-          <p className="text-sm text-status-rejected">{collectState.message}</p>
+          <p className="text-sm text-status-rejected">{COLLECT_FAILED_MESSAGE}</p>
         )}
         {collectState.status === 'loading' && (
           <p className="text-sm text-text-muted">
