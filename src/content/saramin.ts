@@ -6,10 +6,12 @@ import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from 
 import { toSafeUrl } from '../lib/url';
 
 // .txt_sub는 지원완료 행에선 "미열람"/"열람"이지만 지원취소완료 행에선 취소일시가 들어온다.
-// 텍스트가 정확히 이 둘 중 하나일 때만 viewed로 쓰고, 아니면 undefined로 둔다.
+// 열람/미열람으로 "시작"할 때만 viewed로 쓰고, 아니면(취소일시 등) undefined로 둔다.
+// "미열람"이 "열람"을 포함하므로 반드시 미열람을 먼저 검사한다.
 function parseViewed(subStatusText: string | undefined): boolean | undefined {
-  if (subStatusText === '열람') return true;
-  if (subStatusText === '미열람') return false;
+  if (!subStatusText) return undefined;
+  if (subStatusText.startsWith('미열람')) return false;
+  if (subStatusText.startsWith('열람')) return true;
   return undefined;
 }
 

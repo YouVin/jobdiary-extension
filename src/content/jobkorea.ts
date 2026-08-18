@@ -28,10 +28,12 @@ function formatApplyDateExact(raw: string | undefined): string | undefined {
   return `${year}.${month}.${day} ${hour}:${minute}:${second}`;
 }
 
-// '.reading' 텍스트가 정확히 "미열람"/"열람"일 때만 viewed로 쓰고, 아니면 undefined로 둔다.
+// '.reading'은 열람 행에서 "열람\n2026.04.03"처럼 열람일자가 함께 붙어 완전일치가 실패한다.
+// 시작 문자로 판별한다 — "미열람"이 "열람"을 포함하므로 반드시 미열람을 먼저 검사한다.
 function parseViewed(readingText: string | undefined): boolean | undefined {
-  if (readingText === '열람') return true;
-  if (readingText === '미열람') return false;
+  if (!readingText) return undefined;
+  if (readingText.startsWith('미열람')) return false;
+  if (readingText.startsWith('열람')) return true;
   return undefined;
 }
 
