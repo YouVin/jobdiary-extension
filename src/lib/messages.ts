@@ -11,6 +11,10 @@ export interface CollectMessage {
 export interface CollectResponse {
   applications: Array<Omit<Application, 'id' | 'updatedAt'>>;
   count: number;
+  // 같은 탭에서 이미 수집이 진행 중일 때 true. 이땐 applications/count는 빈 값이니 무시한다.
+  busy?: boolean;
+  // 수집 자체(파싱 이후 단계, 예: storage 저장)가 실패했을 때 true. applications/count는 빈 값.
+  error?: boolean;
 }
 
 // 웹앱 → 익스텐션 pull 요청 프로토콜 (chrome.runtime.onMessageExternal, INTEGRATION.md §6).

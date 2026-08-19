@@ -1,10 +1,9 @@
 console.log('[JobDiary] 원티드 파서 로드됨');
 import { WANTED_PAGINATION_SELECTORS, WANTED_SELECTORS } from './selectors/wanted';
 import type { ScrapedApplication } from '../types/application';
-import { convertToApplication } from '../lib/adapter';
-import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
 import { delay, MAX_PAGE_CAP, PAGE_DELAY_MS } from './paginate';
 import { waitForElement } from './waitForElement';
+import { registerCollectHandler } from './collectHandler';
 
 // "2026. 7. 11" (마침표+공백 구분, 월/일 한 자리 가능) → "2026.07.11" (사람인/잡코리아 포맷과 통일)
 // 형식이 예상과 다르면 원문을 그대로 반환, 값이 없으면 빈 문자열 반환
@@ -42,11 +41,6 @@ export function parseWanted(root: ParentNode = document): ScrapedApplication[] {
   });
 
   return results;
-}
-
-function logParsedApplications(applications: ScrapedApplication[]): void {
-  console.log(`[원티드 파서] ${applications.length}건 파싱됨`);
-  console.table(applications);
 }
 
 function wantedRowKey(row: ScrapedApplication): string {
@@ -119,19 +113,6 @@ async function collectWantedAllPages(): Promise<ScrapedApplication[]> {
   return allRows;
 }
 
-chrome.runtime.onMessage.addListener((message: CollectMessage, _sender, sendResponse) => {
-  if (message.type !== COLLECT_MESSAGE_TYPE) return;
-
-  // React SPA라 페이지 로드 직후엔 화면이 아직 준비 안 됐을 수 있다. 컨테이너가 나타날
-  // 때까지 짧게 폴링한 뒤 페이지 순회(클릭 기반)를 시작한다.
-  waitForElement(WANTED_SELECTORS.container).then(async () => {
-    const scraped = await collectWantedAllPages();
-    logParsedApplications(scraped);
-
-    const applications = scraped.map(convertToApplication);
-    const response: CollectResponse = { applications, count: applications.length };
-    sendResponse(response);
-  });
-
-  return true; // 비동기 응답이므로 메시지 채널을 열어둔다 (MV3 규약)
-});
+// React SPA라 페이지 로드 직후엔 화면이 아직 준비 안 됐을 수 있다. 컨테이너가 나타날
+// 때까지 짧게 폴링한 뒤 페이지 순회(클릭 기반)를 시작한다.
+registerCollectHandler('wanted', () => waitForElement(WANTED_SELECTORS.container).then(collectWantedAllPages));

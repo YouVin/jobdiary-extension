@@ -1,10 +1,9 @@
 console.log('[JobDiary] 사람인 파서 로드됨');
 import { SARAMIN_SELECTORS } from './selectors/saramin';
 import type { ScrapedApplication } from '../types/application';
-import { convertToApplication } from '../lib/adapter';
-import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
 import { toSafeUrl } from '../lib/url';
 import { collectAllPages } from './paginate';
+import { registerCollectHandler } from './collectHandler';
 
 // .txt_sub는 지원완료 행에선 "미열람"/"열람"이지만 지원취소완료 행에선 취소일시가 들어온다.
 // 열람/미열람으로 "시작"할 때만 viewed로 쓰고, 아니면(취소일시 등) undefined로 둔다.
@@ -47,11 +46,6 @@ export function parseSaramin(root: ParentNode = document): ScrapedApplication[] 
   });
 }
 
-function logParsedApplications(applications: ScrapedApplication[]): void {
-  console.log(`[사람인 파서] ${applications.length}건 파싱됨`);
-  console.table(applications);
-}
-
 // 행 식별 키: externalId가 있으면 그걸로, 없으면 회사+지원일 조합으로 폴백.
 function saraminRowKey(row: ScrapedApplication | undefined): string | undefined {
   if (!row) return undefined;
@@ -88,15 +82,4 @@ async function collectSaraminAllPages(): Promise<ScrapedApplication[]> {
   return rows;
 }
 
-chrome.runtime.onMessage.addListener((message: CollectMessage, _sender, sendResponse) => {
-  if (message.type !== COLLECT_MESSAGE_TYPE) return;
-
-  collectSaraminAllPages().then((scraped) => {
-    logParsedApplications(scraped);
-    const applications = scraped.map(convertToApplication);
-    const response: CollectResponse = { applications, count: applications.length };
-    sendResponse(response);
-  });
-
-  return true; // 비동기 응답이므로 메시지 채널을 열어둔다 (MV3 규약)
-});
+registerCollectHandler('saramin', collectSaraminAllPages);

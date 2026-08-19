@@ -1,10 +1,9 @@
 console.log('[JobDiary] 잡코리아 파서 로드됨');
 import { JOBKOREA_SELECTORS } from './selectors/jobkorea';
 import type { ScrapedApplication } from '../types/application';
-import { convertToApplication } from '../lib/adapter';
-import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
 import { toSafeUrl } from '../lib/url';
 import { collectAllPages } from './paginate';
+import { registerCollectHandler } from './collectHandler';
 
 // "20260601235538" (YYYYMMDDHHmmss, 14자리 숫자) → "2026.06.01 23:55" (사람인 포맷과 통일)
 function formatApplyDate(raw: string | undefined): string {
@@ -89,11 +88,6 @@ export function parseJobkorea(root: ParentNode = document): ScrapedApplication[]
   return results;
 }
 
-function logParsedApplications(applications: ScrapedApplication[]): void {
-  console.log(`[잡코리아 파서] ${applications.length}건 파싱됨`);
-  console.table(applications);
-}
-
 function buildJobkoreaPageUrl(pageNum: number): string {
   const url = new URL(location.href);
   url.searchParams.set(JOBKOREA_SELECTORS.pageParam, String(pageNum));
@@ -114,15 +108,4 @@ async function collectJobkoreaAllPages(): Promise<ScrapedApplication[]> {
   return rows;
 }
 
-chrome.runtime.onMessage.addListener((message: CollectMessage, _sender, sendResponse) => {
-  if (message.type !== COLLECT_MESSAGE_TYPE) return;
-
-  collectJobkoreaAllPages().then((scraped) => {
-    logParsedApplications(scraped);
-    const applications = scraped.map(convertToApplication);
-    const response: CollectResponse = { applications, count: applications.length };
-    sendResponse(response);
-  });
-
-  return true; // 비동기 응답이므로 메시지 채널을 열어둔다 (MV3 규약)
-});
+registerCollectHandler('jobkorea', collectJobkoreaAllPages);
