@@ -13,6 +13,7 @@ const UNSUPPORTED_MESSAGE = '지원현황 페이지에서 눌러주세요'
 const COLLECT_FAILED_MESSAGE = '수집에 실패했어요. 새로고침 후 다시 시도해 주세요'
 const EMPTY_RESULT_MESSAGE = '이 페이지에서 지원내역을 찾지 못했어요. 목록을 불러온 뒤 다시 시도해 주세요'
 const BUSY_MESSAGE = '이미 수집이 진행 중이에요. 잠시 후 다시 시도해 주세요'
+const TRUNCATED_MESSAGE = '일부 페이지를 불러오지 못했을 수 있어요. 다시 시도해 주세요'
 
 // (a) 미지원 페이지 안내에 쓰는 바로가기. jobkorea는 "입사지원현황" 딱 그 페이지의 확정된
 // URL이 없어(SELECTORS.md 참고) 마이페이지까지만 안내한다. saramin/wanted는 SELECTORS.md에
@@ -58,10 +59,12 @@ async function sendCollectMessageWithRetries(tabId: number): Promise<CollectResp
 type CollectState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'success', count: number }
+  // truncated: 페이지네이션이 정상 종료가 아니라 fetch 실패/렌더 타임아웃/상한 도달로
+  // 중간에 멈췄을 때 true. count는 그때까지 모은 값이지만 실제로는 더 있을 수 있다는 뜻.
+  | { status: 'success', count: number, truncated: boolean }
   // (c) 0건 수집: 응답은 왔지만 count === 0. 에러가 아니라 "찾지 못함" — 파서 미스인지
   // 진짜 0건인지 유저가 구분할 수 있게 별도 상태로 둔다.
-  | { status: 'empty' }
+  | { status: 'empty', truncated: boolean }
   // (a) 미지원 페이지: platform이 애초에 감지되지 않음.
   | { status: 'unsupported' }
   // (b) 수집 실패: platform은 감지됐지만 tab.id 없음 / 복구 후에도 응답 없음 / 예외.
@@ -177,11 +180,12 @@ export function App() {
       // 상태 표시만 'empty'로 분기해 "파서 미스 가능성"을 알린다.
       await refreshSiteCounts()
 
+      const truncated = response.truncated ?? false
       if (response.count === 0) {
-        setCollectState({ status: 'empty' })
+        setCollectState({ status: 'empty', truncated })
       }
       else {
-        setCollectState({ status: 'success', count: response.count })
+        setCollectState({ status: 'success', count: response.count, truncated })
       }
     }
     catch {
@@ -244,13 +248,23 @@ export function App() {
           {collectState.status === 'loading' ? '수집 중...' : '지원내역 수집하기'}
         </Button>
         {collectState.status === 'success' && (
-          <p className="text-sm text-text-muted">
-            {collectState.count}
-            건 수집됨
-          </p>
+          <>
+            <p className="text-sm text-text-muted">
+              {collectState.count}
+              건 수집됨
+            </p>
+            {collectState.truncated && (
+              <p className="text-sm text-status-rejected">{TRUNCATED_MESSAGE}</p>
+            )}
+          </>
         )}
         {collectState.status === 'empty' && (
-          <p className="text-sm text-text-muted">{EMPTY_RESULT_MESSAGE}</p>
+          <>
+            <p className="text-sm text-text-muted">{EMPTY_RESULT_MESSAGE}</p>
+            {collectState.truncated && (
+              <p className="text-sm text-status-rejected">{TRUNCATED_MESSAGE}</p>
+            )}
+          </>
         )}
         {collectState.status === 'unsupported' && (
           <div className="flex flex-col gap-2">

@@ -15,6 +15,9 @@ export interface CollectResponse {
   busy?: boolean;
   // 수집 자체(파싱 이후 단계, 예: storage 저장)가 실패했을 때 true. applications/count는 빈 값.
   error?: boolean;
+  // 페이지네이션이 정상 종료가 아니라 fetch 실패/렌더 타임아웃/상한 도달로 중간에 멈췄을 때 true.
+  // applications/count는 그때까지 모은 값이지만, 사이트에 더 있을 수 있다는 뜻이라 유저에게 알려야 한다.
+  truncated?: boolean;
 }
 
 // 웹앱 → 익스텐션 pull 요청 프로토콜 (chrome.runtime.onMessageExternal, INTEGRATION.md §6).

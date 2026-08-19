@@ -56,11 +56,14 @@ function isNextButtonDisabled(button: Element): boolean {
 }
 
 // "다음 페이지" 버튼을 클릭하고, 활성 페이지 번호가 바뀔 때까지(React 리렌더 완료 신호로 씀)
-// 짧게 폴링해서 기다린다. 버튼이 없거나 비활성(마지막 페이지)이면 false. 클릭 후 시간 안에
-// 페이지 번호가 안 바뀌면(렌더 실패/타임아웃) false — 호출자가 "여기서 중단"으로 처리한다.
-async function goToNextPageAndWait(timeoutMs = 4000, intervalMs = 150): Promise<boolean> {
+// 짧게 폴링해서 기다린다. 버튼이 없거나 비활성이면 'no-next'(정상 — 진짜 마지막 페이지).
+// 클릭 후 시간 안에 페이지 번호가 안 바뀌면 'timeout'(렌더 실패 등 이상 상황 — 더 있을 수
+// 있는데 못 넘어간 것이라 정상 종료와 구분해야 한다). 성공하면 'moved'.
+type NextPageResult = 'moved' | 'no-next' | 'timeout';
+
+async function goToNextPageAndWait(timeoutMs = 4000, intervalMs = 150): Promise<NextPageResult> {
   const nextButton = document.querySelector<HTMLButtonElement>(WANTED_PAGINATION_SELECTORS.nextButton);
-  if (!nextButton || isNextButtonDisabled(nextButton)) return false;
+  if (!nextButton || isNextButtonDisabled(nextButton)) return 'no-next';
 
   const prevLabel = getActivePageLabel();
   nextButton.click();
@@ -71,12 +74,12 @@ async function goToNextPageAndWait(timeoutMs = 4000, intervalMs = 150): Promise<
       const currentLabel = getActivePageLabel();
       if (currentLabel !== null && currentLabel !== prevLabel) {
         clearInterval(timer);
-        resolve(true);
+        resolve('moved');
         return;
       }
       if (Date.now() - startedAt >= timeoutMs) {
         clearInterval(timer);
-        resolve(false);
+        resolve('timeout');
       }
     }, intervalMs);
   });
@@ -86,31 +89,44 @@ async function goToNextPageAndWait(timeoutMs = 4000, intervalMs = 150): Promise<
 // 필요해 시도했으나 401로 막혔고, 그 인증 토큰을 코드로 읽는 건 원칙 위반이라 포기했다).
 // 페이지 이동은 실제 "다음 페이지" 버튼을 클릭해서 사람이 하는 것과 동일하게 한다.
 // 안전장치: 최대 100페이지, 페이지 간 250ms 딜레이, 페이지 전환 실패(버튼 없음/비활성/
-// 렌더 타임아웃) 시 중단, 직전 페이지와 유효행 집합이 같으면 무한 방지 중단.
-async function collectWantedAllPages(): Promise<ScrapedApplication[]> {
+// 렌더 타임아웃) 시 중단, 직전 페이지와 유효행 집합이 같으면 무한 방지 중단. 이 중
+// "버튼 없음/비활성"만 정상 종료이고, 나머지는 truncated로 표시해 유저에게 알린다.
+async function collectWantedAllPages(): Promise<{ rows: ScrapedApplication[], truncated: boolean }> {
   const allRows: ScrapedApplication[] = [];
   let prevRowSetKey = '';
   let pageCount = 0;
+  let truncated = false;
 
   for (let i = 0; i < MAX_PAGE_CAP; i++) {
     if (i > 0) {
-      const moved = await goToNextPageAndWait();
-      if (!moved) break; // 다음 페이지 없음(버튼 비활성/없음) 또는 렌더 대기 타임아웃 → 종료
+      const nextResult = await goToNextPageAndWait();
+      if (nextResult === 'no-next') break; // 정상 종료 — 진짜 마지막 페이지
+      if (nextResult === 'timeout') {
+        truncated = true; // 렌더 실패/타임아웃 — 더 있을 수 있는데 못 넘어감
+        break;
+      }
       await delay(PAGE_DELAY_MS);
     }
 
     const rows = parseWanted(document);
     pageCount++;
 
+    if (rows.length === 0) break; // 정상 종료 — 빈 페이지
+
     const rowSetKey = rows.map(wantedRowKey).join('|');
-    if (rows.length === 0 || rowSetKey === prevRowSetKey) break; // 빈 페이지 또는 무한 방지
+    if (rowSetKey === prevRowSetKey) {
+      truncated = true; // 예상 밖 반복 감지 — 완전한 수집이라 확신할 수 없음
+      break;
+    }
 
     allRows.push(...rows);
     prevRowSetKey = rowSetKey;
+
+    if (i === MAX_PAGE_CAP - 1) truncated = true; // 최대 페이지 상한 도달 — 더 있을 수 있음
   }
 
-  console.log(`[원티드 파서] 총 ${pageCount}페이지, ${allRows.length}건 수집`);
-  return allRows;
+  console.log(`[원티드 파서] 총 ${pageCount}페이지, ${allRows.length}건 수집${truncated ? ' (일부 중단됨)' : ''}`);
+  return { rows: allRows, truncated };
 }
 
 // React SPA라 페이지 로드 직후엔 화면이 아직 준비 안 됐을 수 있다. 컨테이너가 나타날

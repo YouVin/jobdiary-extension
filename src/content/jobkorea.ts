@@ -96,16 +96,16 @@ function buildJobkoreaPageUrl(pageNum: number): string {
 
 // page 1은 현재 문서 그대로(기존 경로 유지), 2..N은 같은 쿼리(유저 필터 그대로)로 Page만
 // 바꿔가며 fetch + DOMParser로 파싱한다. 파싱된 유효행이 0개면 그 페이지에서 종료.
-async function collectJobkoreaAllPages(): Promise<ScrapedApplication[]> {
-  const { rows, pageCount } = await collectAllPages({
+async function collectJobkoreaAllPages(): Promise<{ rows: ScrapedApplication[], truncated: boolean }> {
+  const { rows, pageCount, truncated } = await collectAllPages({
     page1Rows: parseJobkorea(document),
     buildPageUrl: buildJobkoreaPageUrl,
     parseRows: doc => parseJobkorea(doc),
     getRowKey: row => row.externalId ? `id:${row.externalId}` : `${row.company}|${row.appliedAt}`,
     isSiteTerminal: rows => rows.length === 0,
   });
-  console.log(`[잡코리아 파서] 총 ${pageCount}페이지, ${rows.length}건 수집`);
-  return rows;
+  console.log(`[잡코리아 파서] 총 ${pageCount}페이지, ${rows.length}건 수집${truncated ? ' (일부 중단됨)' : ''}`);
+  return { rows, truncated };
 }
 
 registerCollectHandler('jobkorea', collectJobkoreaAllPages);

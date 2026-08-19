@@ -11,9 +11,14 @@ import { saveSiteApplications } from '../lib/storage';
 // 새로 시작하지 않고 즉시 busy로 응답한다. 원티드는 실제 "다음 페이지" 버튼을 클릭해 순회하므로
 // 두 순회가 동시에 페이지 상태를 조작하면 결과가 섞일 수 있어 특히 중요하고, 사람인/잡코리아도
 // 불필요하게 사이트에 중복 요청을 보내지 않기 위해 동일하게 막는다.
+interface CollectResult {
+  rows: ScrapedApplication[];
+  truncated: boolean;
+}
+
 export function registerCollectHandler(
   platform: Platform,
-  collect: () => Promise<ScrapedApplication[]>,
+  collect: () => Promise<CollectResult>,
 ): void {
   let isCollecting = false;
 
@@ -36,13 +41,13 @@ export function registerCollectHandler(
 
     isCollecting = true;
     collect()
-      .then(async (scraped) => {
+      .then(async ({ rows: scraped, truncated }) => {
         console.log(`[${platform}] ${scraped.length}건 파싱됨`);
         console.table(scraped);
 
         const applications = scraped.map(convertToApplication);
         await saveSiteApplications(platform, applications);
-        respond(sendResponse, { applications, count: applications.length });
+        respond(sendResponse, { applications, count: applications.length, truncated });
       })
       .catch((error: unknown) => {
         console.error(`[${platform}] 수집 실패`, error);

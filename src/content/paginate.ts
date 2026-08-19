@@ -43,12 +43,16 @@ interface PaginateOptions<T> {
 interface PaginateResult<T> {
   rows: T[];
   pageCount: number;
+  // false면 사이트별 종료 조건(클램프/빈 페이지)으로 정상 종료된 것. true면 fetch 실패,
+  // 예상 밖 반복 감지, 또는 최대 페이지 상한 도달로 "더 있을 수 있는데 못 받았다"는 뜻이라
+  // 호출자가 유저에게 "일부만 수집됐을 수 있음"을 알려야 한다.
+  truncated: boolean;
 }
 
 // page 1(현재 document, 이미 파싱됨) 이후 2..N 페이지를 same-origin fetch로 순회하며
 // 기존 행 파서를 재사용해 누적한다. 안전장치(공통): 최대 100페이지, 페이지 간 250ms 딜레이,
 // fetch 실패 시 그 페이지에서 중단(지금까지 것 반환), 직전 페이지와 유효행 집합이 완전히
-// 같으면 중단(무한 방지).
+// 같으면 중단(무한 방지). 이 세 가지(+상한 도달)는 "정상 종료"와 구분해 truncated로 표시한다.
 export async function collectAllPages<T>({
   page1Rows,
   buildPageUrl,
@@ -59,25 +63,36 @@ export async function collectAllPages<T>({
   const allRows = [...page1Rows];
   let prevRows = page1Rows;
   let pageCount = 1;
+  let truncated = false;
 
   for (let pageNum = 2; pageNum <= MAX_PAGE_CAP; pageNum++) {
     await delay(PAGE_DELAY_MS);
 
     const doc = await fetchPageDocument(buildPageUrl(pageNum));
-    if (!doc) break; // fetch 실패(비200/네트워크) → 이 페이지에서 중단, 지금까지 것 반환
+    if (!doc) {
+      truncated = true; // fetch 실패(비200/네트워크) → 이 페이지에서 중단, 지금까지 것 반환
+      break;
+    }
 
     const rows = parseRows(doc);
 
-    if (isSiteTerminal(rows, prevRows)) break; // 사이트별 종료 조건 → 이 페이지는 버리고 중단
-    if (rows.length === 0) break; // 사이트별 조건에서 안 걸렸어도 빈 페이지면 자연 종료
+    if (isSiteTerminal(rows, prevRows)) break; // 사이트별 종료 조건 → 정상 종료, 이 페이지는 버림
+    if (rows.length === 0) break; // 사이트별 조건에서 안 걸렸어도 빈 페이지면 정상 종료
 
     // 공통 안전장치: 직전 페이지와 유효행 집합이 완전히 동일하면 무한 순회 방지를 위해 중단.
-    if (rowSetKey(rows, getRowKey) === rowSetKey(prevRows, getRowKey)) break;
+    // 정상적인 마지막 페이지라면 보통 위 두 조건에서 먼저 걸리므로, 여기까지 왔다는 건
+    // 예상 밖 상황(사이트별 종료 조건이 못 잡아낸 반복)이라 완전한 수집이라 확신할 수 없다.
+    if (rowSetKey(rows, getRowKey) === rowSetKey(prevRows, getRowKey)) {
+      truncated = true;
+      break;
+    }
 
     allRows.push(...rows);
     prevRows = rows;
     pageCount++;
+
+    if (pageNum === MAX_PAGE_CAP) truncated = true; // 최대 페이지 상한 도달 — 더 있을 수 있음
   }
 
-  return { rows: allRows, pageCount };
+  return { rows: allRows, pageCount, truncated };
 }
