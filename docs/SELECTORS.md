@@ -221,6 +221,7 @@ li[class*="table_tr"]   (해시 무시하고 부분매칭)
 | 데이터 | 셀렉터 | 비고 |
 | ------ | ------ | ---- |
 | 다음 페이지 버튼 | `[data-role="pagination-next-button"]` | 마지막 페이지에서는 `disabled` 속성 + `aria-disabled="true"`가 붙음. 이걸로 종료 판정 |
+| 이전 페이지 버튼 | `[data-role="pagination-prev-button"]` | 1페이지에서는 `disabled` 속성 + `aria-disabled="true"`가 붙음. 유저가 1페이지가 아닌 곳에서 수집을 시작했을 때 1페이지로 먼저 되돌아가는 데 씀 |
 | 활성 페이지 번호 | `[data-role="pagination-item-page"][aria-current="page"]` | 안의 `<span>` 텍스트가 "1", "2" 등 숫자. 클릭 후 이 값이 바뀌는 걸 React 리렌더 완료 신호로 씀 |
 
 ### 예시 코드
