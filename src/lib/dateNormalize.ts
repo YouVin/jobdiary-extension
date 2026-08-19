@@ -3,11 +3,23 @@
 // 자정 기준 UTC ISO 문자열로 만든다. docs/INTEGRATION.md 날짜 변환 규칙.
 const DATE_PATTERN = /^(\d{4})\.(\d{2})\.(\d{2})(?:\s+\d{2}:\d{2})?$/;
 
+// Date.UTC는 범위를 벗어난 필드를 조용히 다음 달로 이월시키므로(예: 2월 31일 → 3월 3일),
+// 자릿수만 검사하는 정규식으로는 "2026.02.31" 같은 무효한 날짜를 걸러내지 못한다. 구성한
+// 날짜를 원본 입력값과 왕복 비교해 이월이 발생했으면(=원래 값이 무효였으면) false를 반환한다.
+function isValidCalendarDate(y: number, mo: number, d: number): boolean {
+  const roundTrip = new Date(Date.UTC(y, mo - 1, d));
+  return roundTrip.getUTCFullYear() === y
+    && roundTrip.getUTCMonth() === mo - 1
+    && roundTrip.getUTCDate() === d;
+}
+
 export function normalizeDate(raw: string): string {
   const match = raw.match(DATE_PATTERN);
   if (!match) return ''; // 형식이 예상과 다르면 빈 문자열 (파싱 실패를 조용히 삼키지 않고 명확히 드러냄)
 
   const [, year, month, day] = match;
+  if (!isValidCalendarDate(Number(year), Number(month), Number(day))) return ''; // 실존하지 않는 날짜(2월 31일 등)도 빈 문자열로 거부
+
   return `${year}-${month}-${day}T00:00:00.000Z`;
 }
 
