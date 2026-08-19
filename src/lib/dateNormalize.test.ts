@@ -15,6 +15,17 @@ describe('normalizeDate', () => {
     expect(normalizeDate('')).toBe('');
     expect(normalizeDate('알 수 없음')).toBe('');
   });
+
+  it('자릿수는 맞지만 실존하지 않는 날짜는 빈 문자열로 거부한다', () => {
+    // Date.UTC는 2월 31일을 3월 3일로 조용히 이월시키므로, 왕복 비교로 걸러내야 한다.
+    expect(normalizeDate('2026.02.31')).toBe('');
+    // 2026년은 윤년이 아니므로 2월 29일도 무효한 날짜다.
+    expect(normalizeDate('2026.02.29')).toBe('');
+  });
+
+  it('윤년의 2월 29일처럼 실존하는 경계 날짜는 정상적으로 변환한다', () => {
+    expect(normalizeDate('2028.02.29')).toBe('2028-02-29T00:00:00.000Z');
+  });
 });
 
 describe('normalizeDateExact', () => {
