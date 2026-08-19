@@ -1,9 +1,10 @@
 console.log('[JobDiary] 잡코리아 파서 로드됨');
 import { JOBKOREA_SELECTORS } from './selectors/jobkorea';
 import type { ScrapedApplication } from '../types/application';
-import { convertToApplication } from '../lib/adapter';
-import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
 import { toSafeUrl } from '../lib/url';
+import { collectAllPages, getCurrentPageNumber } from './paginate';
+import { registerCollectHandler } from './collectHandler';
+import { buildRowKey } from './rowKey';
 
 // "20260601235538" (YYYYMMDDHHmmss, 14자리 숫자) → "2026.06.01 23:55" (사람인 포맷과 통일)
 function formatApplyDate(raw: string | undefined): string {
@@ -37,8 +38,8 @@ function parseViewed(readingText: string | undefined): boolean | undefined {
   return undefined;
 }
 
-export function parseJobkorea(): ScrapedApplication[] {
-  const rows = document.querySelectorAll<HTMLElement>(JOBKOREA_SELECTORS.container);
+export function parseJobkorea(root: ParentNode = document): ScrapedApplication[] {
+  const rows = root.querySelectorAll<HTMLElement>(JOBKOREA_SELECTORS.container);
   const results: ScrapedApplication[] = [];
 
   rows.forEach((row) => {
@@ -88,18 +89,28 @@ export function parseJobkorea(): ScrapedApplication[] {
   return results;
 }
 
-function logParsedApplications(applications: ScrapedApplication[]): void {
-  console.log(`[잡코리아 파서] ${applications.length}건 파싱됨`);
-  console.table(applications);
+function buildJobkoreaPageUrl(pageNum: number): string {
+  const url = new URL(location.href);
+  url.searchParams.set(JOBKOREA_SELECTORS.pageParam, String(pageNum));
+  return url.toString();
 }
 
-chrome.runtime.onMessage.addListener((message: CollectMessage, _sender, sendResponse) => {
-  if (message.type !== COLLECT_MESSAGE_TYPE) return;
+// 유저가 1페이지가 아닌 곳(URL의 Page 파라미터가 2 이상)에서 눌렀다면, 진짜 1페이지를
+// collectAllPages가 내부에서 따로 fetch해 시작점으로 삼는다 — 안 그러면 앞쪽 페이지가 누락되고,
+// 뒤에서 현재 페이지를 다시 fetch해 같은 행이 중복으로도 들어간다.
+// 2..N은 같은 쿼리(유저 필터 그대로)로 Page만 바꿔가며 fetch + DOMParser로 파싱한다.
+// 파싱된 유효행이 0개면 그 페이지에서 종료.
+async function collectJobkoreaAllPages(): Promise<{ rows: ScrapedApplication[], truncated: boolean }> {
+  const { rows, pageCount, truncated } = await collectAllPages({
+    currentPageNumber: getCurrentPageNumber(JOBKOREA_SELECTORS.pageParam),
+    currentPageRows: parseJobkorea(document),
+    buildPageUrl: buildJobkoreaPageUrl,
+    parseRows: doc => parseJobkorea(doc),
+    getRowKey: buildRowKey,
+    isSiteTerminal: rows => rows.length === 0,
+  });
+  console.log(`[잡코리아 파서] 총 ${pageCount}페이지, ${rows.length}건 수집${truncated ? ' (일부 중단됨)' : ''}`);
+  return { rows, truncated };
+}
 
-  const scraped = parseJobkorea();
-  logParsedApplications(scraped);
-
-  const applications = scraped.map(convertToApplication);
-  const response: CollectResponse = { applications, count: applications.length };
-  sendResponse(response);
-});
+registerCollectHandler('jobkorea', collectJobkoreaAllPages);

@@ -4,7 +4,7 @@ import { isConnectionError, waitForTabComplete } from '@/lib/collectRecovery'
 import { copyRichText } from '@/lib/clipboard'
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '@/lib/messages'
 import { detectPlatform } from '@/lib/platformDetect'
-import { clearAll, getAllApplications, getSiteCounts, saveSiteApplications } from '@/lib/storage'
+import { clearAll, getAllApplications, getSiteCounts } from '@/lib/storage'
 import { applicationsToHtml, applicationsToTsv } from '@/lib/tsv'
 import { Button } from './components/Button'
 import { PLATFORM_LABEL, PlatformBadge } from './components/PlatformBadge'
@@ -12,12 +12,14 @@ import { PLATFORM_LABEL, PlatformBadge } from './components/PlatformBadge'
 const UNSUPPORTED_MESSAGE = '지원현황 페이지에서 눌러주세요'
 const COLLECT_FAILED_MESSAGE = '수집에 실패했어요. 새로고침 후 다시 시도해 주세요'
 const EMPTY_RESULT_MESSAGE = '이 페이지에서 지원내역을 찾지 못했어요. 목록을 불러온 뒤 다시 시도해 주세요'
+const BUSY_MESSAGE = '이미 수집이 진행 중이에요. 잠시 후 다시 시도해 주세요'
+const TRUNCATED_MESSAGE = '일부 페이지를 불러오지 못했을 수 있어요. 다시 시도해 주세요'
 
 // (a) 미지원 페이지 안내에 쓰는 바로가기. jobkorea는 "입사지원현황" 딱 그 페이지의 확정된
 // URL이 없어(SELECTORS.md 참고) 마이페이지까지만 안내한다. saramin/wanted는 SELECTORS.md에
 // 문서화된 지원현황 페이지 URL 그대로.
 const SITE_APPLY_STATUS_LINKS: Array<{ platform: Platform, label: string, url: string }> = [
-  { platform: 'saramin', label: `${PLATFORM_LABEL.saramin} 지원현황`, url: 'https://www.saramin.co.kr/zf_user/mypage/apply-status' },
+  { platform: 'saramin', label: `${PLATFORM_LABEL.saramin} 지원현황`, url: 'https://www.saramin.co.kr/zf_user/persons/apply-status-list' },
   { platform: 'jobkorea', label: `${PLATFORM_LABEL.jobkorea} 마이페이지`, url: 'https://www.jobkorea.co.kr' },
   { platform: 'wanted', label: `${PLATFORM_LABEL.wanted} 지원현황`, url: 'https://www.wanted.co.kr/status/applications/applied' },
 ]
@@ -57,14 +59,18 @@ async function sendCollectMessageWithRetries(tabId: number): Promise<CollectResp
 type CollectState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'success', count: number }
+  // truncated: 페이지네이션이 정상 종료가 아니라 fetch 실패/렌더 타임아웃/상한 도달로
+  // 중간에 멈췄을 때 true. count는 그때까지 모은 값이지만 실제로는 더 있을 수 있다는 뜻.
+  | { status: 'success', count: number, truncated: boolean }
   // (c) 0건 수집: 응답은 왔지만 count === 0. 에러가 아니라 "찾지 못함" — 파서 미스인지
   // 진짜 0건인지 유저가 구분할 수 있게 별도 상태로 둔다.
-  | { status: 'empty' }
+  | { status: 'empty', truncated: boolean }
   // (a) 미지원 페이지: platform이 애초에 감지되지 않음.
   | { status: 'unsupported' }
   // (b) 수집 실패: platform은 감지됐지만 tab.id 없음 / 복구 후에도 응답 없음 / 예외.
   | { status: 'error' }
+  // (d) 같은 탭에서 이미 수집이 진행 중일 때 (재클릭 등). 실패가 아니라 "잠시 후 다시" 안내.
+  | { status: 'busy' }
 
 type CopyState = 'idle' | 'copied' | 'error'
 
@@ -159,16 +165,27 @@ export function App() {
         return
       }
 
-      // 저장 흐름은 그대로: 0건이어도 다른 사이트들과 동일하게 저장/현황 갱신한다.
+      if (response.busy) {
+        setCollectState({ status: 'busy' })
+        return
+      }
+
+      if (response.error) {
+        setCollectState({ status: 'error' })
+        return
+      }
+
+      // 저장은 content script가 이미 끝냈다(팝업이 응답을 못 받아도 데이터가 남도록) —
+      // 여기서는 최신 건수만 다시 읽어온다. 0건이어도 다른 사이트들과 동일하게 현황을 갱신하되,
       // 상태 표시만 'empty'로 분기해 "파서 미스 가능성"을 알린다.
-      await saveSiteApplications(platform, response.applications)
       await refreshSiteCounts()
 
+      const truncated = response.truncated ?? false
       if (response.count === 0) {
-        setCollectState({ status: 'empty' })
+        setCollectState({ status: 'empty', truncated })
       }
       else {
-        setCollectState({ status: 'success', count: response.count })
+        setCollectState({ status: 'success', count: response.count, truncated })
       }
     }
     catch {
@@ -231,13 +248,23 @@ export function App() {
           {collectState.status === 'loading' ? '수집 중...' : '지원내역 수집하기'}
         </Button>
         {collectState.status === 'success' && (
-          <p className="text-sm text-text-muted">
-            {collectState.count}
-            건 수집됨
-          </p>
+          <>
+            <p className="text-sm text-text-muted">
+              {collectState.count}
+              건 수집됨
+            </p>
+            {collectState.truncated && (
+              <p className="text-sm text-status-rejected">{TRUNCATED_MESSAGE}</p>
+            )}
+          </>
         )}
         {collectState.status === 'empty' && (
-          <p className="text-sm text-text-muted">{EMPTY_RESULT_MESSAGE}</p>
+          <>
+            <p className="text-sm text-text-muted">{EMPTY_RESULT_MESSAGE}</p>
+            {collectState.truncated && (
+              <p className="text-sm text-status-rejected">{TRUNCATED_MESSAGE}</p>
+            )}
+          </>
         )}
         {collectState.status === 'unsupported' && (
           <div className="flex flex-col gap-2">
@@ -260,6 +287,9 @@ export function App() {
         )}
         {collectState.status === 'error' && (
           <p className="text-sm text-status-rejected">{COLLECT_FAILED_MESSAGE}</p>
+        )}
+        {collectState.status === 'busy' && (
+          <p className="text-sm text-text-muted">{BUSY_MESSAGE}</p>
         )}
         {collectState.status === 'loading' && (
           <p className="text-sm text-text-muted">

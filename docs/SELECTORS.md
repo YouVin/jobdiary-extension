@@ -35,7 +35,7 @@ interface ScrapedApplication {
 ### 지원현황 페이지
 
 ```text
-https://www.saramin.co.kr/zf_user/mypage/apply-status (예상)
+https://www.saramin.co.kr/zf_user/persons/apply-status-list
 ```
 
 ### 컨테이너 (지원 1건)
@@ -203,6 +203,26 @@ li[class*="table_tr"]   (해시 무시하고 부분매칭)
 ### ⚠️ 주의: 해시 클래스
 
 원티드 class는 `List_List_table_td_company_name__u5tEF`처럼 뒤에 해시(`__u5tEF`)가 붙는다. 이 해시는 사이트 빌드 시 바뀔 수 있으므로 **전체 class를 쓰지 말고 `[class*="td_company_name"]` 부분매칭**을 사용한다. `td_` 프리픽스까지 포함해야 다른 영역(헤더 등)의 동일 접미사 class와 오매칭되지 않는다.
+
+### 페이지네이션 (실물 HTML 분석 결과)
+
+사람인/잡코리아처럼 URL만 바꿔 fetch로 페이지를 순회하는 방식은 원티드에서 안 통한다 — React SPA라 fetch로 받은 원문 HTML엔 목록이 서버 렌더링돼 있지 않다(검증됨). 내부 JSON API(`/api/v1/applications`)도 시도했으나 로그인 세션 인증이 필요해 401로 막혔고, 그 인증 토큰을 코드로 읽는 건 "로그인 정보 미수집" 원칙 위반이라 포기했다. 대신 화면의 실제 "다음 페이지" 버튼을 클릭하고 DOM 갱신을 기다리는 방식을 쓴다.
+
+```text
+<div data-role="pagination-wrapper">
+  <button data-role="pagination-prev-button" disabled aria-disabled="true">...</button>
+  <ul>
+    <li><button data-role="pagination-item-page" aria-current="page" aria-label="Page 1"><span>1</span></button></li>
+  </ul>
+  <button data-role="pagination-next-button" disabled aria-disabled="true">...</button>
+</div>
+```
+
+| 데이터 | 셀렉터 | 비고 |
+| ------ | ------ | ---- |
+| 다음 페이지 버튼 | `[data-role="pagination-next-button"]` | 마지막 페이지에서는 `disabled` 속성 + `aria-disabled="true"`가 붙음. 이걸로 종료 판정 |
+| 이전 페이지 버튼 | `[data-role="pagination-prev-button"]` | 1페이지에서는 `disabled` 속성 + `aria-disabled="true"`가 붙음. 유저가 1페이지가 아닌 곳에서 수집을 시작했을 때 1페이지로 먼저 되돌아가는 데 씀 |
+| 활성 페이지 번호 | `[data-role="pagination-item-page"][aria-current="page"]` | 안의 `<span>` 텍스트가 "1", "2" 등 숫자. 클릭 후 이 값이 바뀌는 걸 React 리렌더 완료 신호로 씀 |
 
 ### 예시 코드
 

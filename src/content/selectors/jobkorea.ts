@@ -25,4 +25,6 @@ export const JOBKOREA_SELECTORS = {
   url: '.description a',
   // 열람 여부 텍스트("미열람"/"열람") — 클래스(read-not)가 아니라 텍스트로 판별한다
   viewed: '.reading',
+  // 페이지네이션 쿼리 파라미터. 대문자 P인 "Page"다 (사람인/원티드의 소문자 page와 다름).
+  pageParam: 'Page',
 } as const;

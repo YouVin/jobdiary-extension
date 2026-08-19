@@ -14,3 +14,18 @@ export const WANTED_SELECTORS = {
   // 고유ID(externalId)는 원티드 DOM에 없음 — 파서에서 빈 값으로 처리
   // url/viewed도 원티드 DOM에 없음 — 파서에서 undefined 처리
 } as const;
+
+// 페이지네이션. 원티드는 fetch한 HTML에 목록이 서버 렌더링돼 있지 않아(React SPA, 검증됨)
+// 사람인/잡코리아처럼 URL만 바꿔 fetch로 순회하는 방식이 안 통한다. 내부 JSON API도
+// 로그인 세션 인증(Authorization)이 필요해 시도했으나 401로 막힘 — 그 토큰을 코드로
+// 읽는 건 "로그인 정보 미수집" 원칙에 어긋나 포기했다. 대신 화면의 실제 "다음 페이지"
+// 버튼을 클릭하고 DOM 갱신을 기다리는 방식을 쓴다 — src/content/wanted.ts 참고.
+export const WANTED_PAGINATION_SELECTORS = {
+  // 다음 페이지 버튼. 마지막 페이지에서는 disabled 속성 + aria-disabled="true"가 붙는다.
+  nextButton: '[data-role="pagination-next-button"]',
+  // 이전 페이지 버튼. 1페이지에서는 disabled 속성 + aria-disabled="true"가 붙는다. 유저가
+  // 1페이지가 아닌 곳에서 수집을 시작했을 때 1페이지로 먼저 되돌아가는 데 쓴다.
+  prevButton: '[data-role="pagination-prev-button"]',
+  // 현재 활성 페이지 번호 버튼. aria-current="page"이고 안의 <span> 텍스트가 "1", "2" 등 숫자.
+  activePage: '[data-role="pagination-item-page"][aria-current="page"]',
+} as const;

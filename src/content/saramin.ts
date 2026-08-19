@@ -1,9 +1,10 @@
 console.log('[JobDiary] 사람인 파서 로드됨');
 import { SARAMIN_SELECTORS } from './selectors/saramin';
 import type { ScrapedApplication } from '../types/application';
-import { convertToApplication } from '../lib/adapter';
-import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
 import { toSafeUrl } from '../lib/url';
+import { collectAllPages, getCurrentPageNumber } from './paginate';
+import { registerCollectHandler } from './collectHandler';
+import { buildRowKey } from './rowKey';
 
 // .txt_sub는 지원완료 행에선 "미열람"/"열람"이지만 지원취소완료 행에선 취소일시가 들어온다.
 // 열람/미열람으로 "시작"할 때만 viewed로 쓰고, 아니면(취소일시 등) undefined로 둔다.
@@ -15,8 +16,8 @@ function parseViewed(subStatusText: string | undefined): boolean | undefined {
   return undefined;
 }
 
-export function parseSaramin(): ScrapedApplication[] {
-  const rows = document.querySelectorAll<HTMLElement>(SARAMIN_SELECTORS.container);
+export function parseSaramin(root: ParentNode = document): ScrapedApplication[] {
+  const rows = root.querySelectorAll<HTMLElement>(SARAMIN_SELECTORS.container);
 
   return Array.from(rows).map((row) => {
     const company = row.dataset[SARAMIN_SELECTORS.companyAttr] ?? '';
@@ -46,18 +47,36 @@ export function parseSaramin(): ScrapedApplication[] {
   });
 }
 
-function logParsedApplications(applications: ScrapedApplication[]): void {
-  console.log(`[사람인 파서] ${applications.length}건 파싱됨`);
-  console.table(applications);
+function buildSaraminPageUrl(pageNum: number): string {
+  const url = new URL(location.href);
+  url.searchParams.set(SARAMIN_SELECTORS.pageParam, String(pageNum));
+  return url.toString();
 }
 
-chrome.runtime.onMessage.addListener((message: CollectMessage, _sender, sendResponse) => {
-  if (message.type !== COLLECT_MESSAGE_TYPE) return;
+// 유저가 1페이지가 아닌 곳(URL의 page 파라미터가 2 이상)에서 눌렀다면, 진짜 1페이지를
+// collectAllPages가 내부에서 따로 fetch해 시작점으로 삼는다 — 안 그러면 앞쪽 페이지가
+// 누락되고, 클램프 판정 기준(아래 isSiteTerminal)도 "현재 페이지"를 1페이지로 착각해 어긋난다.
+// 2..N은 같은 쿼리(유저 필터 그대로)로 페이지만 바꿔가며 fetch + DOMParser로 파싱한다.
+// 없는 페이지를 요청하면 사람인이 1페이지로 "클램프"되므로, 새 페이지 첫 행이 진짜 1페이지
+// 첫 행과 같으면 클램프로 보고 그 페이지는 버리고 중단한다. ★"직전 페이지"와 비교하면 안 된다
+// — 클램프된 첫 페이지는 직전 페이지(진짜 마지막 페이지)와는 다르고 1페이지와만 같아서,
+// 직전 페이지 비교로는 그 시점을 못 잡고 중복 데이터가 결과에 한 페이지만큼 섞여 들어간다
+// (격리 테스트로 확인됨).
+async function collectSaraminAllPages(): Promise<{ rows: ScrapedApplication[], truncated: boolean }> {
+  const { rows, pageCount, truncated } = await collectAllPages({
+    currentPageNumber: getCurrentPageNumber(SARAMIN_SELECTORS.pageParam),
+    currentPageRows: parseSaramin(document),
+    buildPageUrl: buildSaraminPageUrl,
+    parseRows: doc => parseSaramin(doc),
+    getRowKey: buildRowKey,
+    isSiteTerminal: (rows, _prevRows, page1Rows) => {
+      const first = buildRowKey(rows[0]);
+      const page1FirstKey = buildRowKey(page1Rows[0]);
+      return first !== undefined && first === page1FirstKey;
+    },
+  });
+  console.log(`[사람인 파서] 총 ${pageCount}페이지, ${rows.length}건 수집${truncated ? ' (일부 중단됨)' : ''}`);
+  return { rows, truncated };
+}
 
-  const scraped = parseSaramin();
-  logParsedApplications(scraped);
-
-  const applications = scraped.map(convertToApplication);
-  const response: CollectResponse = { applications, count: applications.length };
-  sendResponse(response);
-});
+registerCollectHandler('saramin', collectSaraminAllPages);
