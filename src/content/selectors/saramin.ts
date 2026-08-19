@@ -20,4 +20,6 @@ export const SARAMIN_SELECTORS = {
   externalIdAttr: 'recruitapply_idx',
   // 공고 링크 (상대경로) — new URL(href, location.origin)로 절대화해서 쓴다
   url: '.recruit a',
+  // 페이지네이션 쿼리 파라미터 (소문자 page). 없는 페이지를 요청하면 사람인이 1페이지로 클램프한다.
+  pageParam: 'page',
 } as const;

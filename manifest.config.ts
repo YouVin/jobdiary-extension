@@ -47,7 +47,7 @@ export default defineManifest((env) => ({
     // 실제 경로 제한은 여기서 이뤄진다. src/lib/platformDetect.ts의 saramin 분기(pathname
     // 검사)와 경로가 문자 그대로 동일해야 한다 — host_permissions는 오리진만 봐서 대상 아님.
     js: ['src/content/saramin.ts'],
-    matches: ['https://*.saramin.co.kr/zf_user/mypage/*'],
+    matches: ['https://*.saramin.co.kr/zf_user/persons/apply-status-list*'],
   }, {
     js: ['src/content/jobkorea.ts'],
     matches: [

@@ -4,6 +4,7 @@ import type { ScrapedApplication } from '../types/application';
 import { convertToApplication } from '../lib/adapter';
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '../lib/messages';
 import { toSafeUrl } from '../lib/url';
+import { collectAllPages } from './paginate';
 
 // "20260601235538" (YYYYMMDDHHmmss, 14자리 숫자) → "2026.06.01 23:55" (사람인 포맷과 통일)
 function formatApplyDate(raw: string | undefined): string {
@@ -37,8 +38,8 @@ function parseViewed(readingText: string | undefined): boolean | undefined {
   return undefined;
 }
 
-export function parseJobkorea(): ScrapedApplication[] {
-  const rows = document.querySelectorAll<HTMLElement>(JOBKOREA_SELECTORS.container);
+export function parseJobkorea(root: ParentNode = document): ScrapedApplication[] {
+  const rows = root.querySelectorAll<HTMLElement>(JOBKOREA_SELECTORS.container);
   const results: ScrapedApplication[] = [];
 
   rows.forEach((row) => {
@@ -93,13 +94,35 @@ function logParsedApplications(applications: ScrapedApplication[]): void {
   console.table(applications);
 }
 
+function buildJobkoreaPageUrl(pageNum: number): string {
+  const url = new URL(location.href);
+  url.searchParams.set(JOBKOREA_SELECTORS.pageParam, String(pageNum));
+  return url.toString();
+}
+
+// page 1은 현재 문서 그대로(기존 경로 유지), 2..N은 같은 쿼리(유저 필터 그대로)로 Page만
+// 바꿔가며 fetch + DOMParser로 파싱한다. 파싱된 유효행이 0개면 그 페이지에서 종료.
+async function collectJobkoreaAllPages(): Promise<ScrapedApplication[]> {
+  const { rows, pageCount } = await collectAllPages({
+    page1Rows: parseJobkorea(document),
+    buildPageUrl: buildJobkoreaPageUrl,
+    parseRows: doc => parseJobkorea(doc),
+    getRowKey: row => row.externalId ? `id:${row.externalId}` : `${row.company}|${row.appliedAt}`,
+    isSiteTerminal: rows => rows.length === 0,
+  });
+  console.log(`[잡코리아 파서] 총 ${pageCount}페이지, ${rows.length}건 수집`);
+  return rows;
+}
+
 chrome.runtime.onMessage.addListener((message: CollectMessage, _sender, sendResponse) => {
   if (message.type !== COLLECT_MESSAGE_TYPE) return;
 
-  const scraped = parseJobkorea();
-  logParsedApplications(scraped);
+  collectJobkoreaAllPages().then((scraped) => {
+    logParsedApplications(scraped);
+    const applications = scraped.map(convertToApplication);
+    const response: CollectResponse = { applications, count: applications.length };
+    sendResponse(response);
+  });
 
-  const applications = scraped.map(convertToApplication);
-  const response: CollectResponse = { applications, count: applications.length };
-  sendResponse(response);
+  return true; // 비동기 응답이므로 메시지 채널을 열어둔다 (MV3 규약)
 });

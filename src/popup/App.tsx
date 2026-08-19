@@ -17,7 +17,7 @@ const EMPTY_RESULT_MESSAGE = '이 페이지에서 지원내역을 찾지 못했�
 // URL이 없어(SELECTORS.md 참고) 마이페이지까지만 안내한다. saramin/wanted는 SELECTORS.md에
 // 문서화된 지원현황 페이지 URL 그대로.
 const SITE_APPLY_STATUS_LINKS: Array<{ platform: Platform, label: string, url: string }> = [
-  { platform: 'saramin', label: `${PLATFORM_LABEL.saramin} 지원현황`, url: 'https://www.saramin.co.kr/zf_user/mypage/apply-status' },
+  { platform: 'saramin', label: `${PLATFORM_LABEL.saramin} 지원현황`, url: 'https://www.saramin.co.kr/zf_user/persons/apply-status-list' },
   { platform: 'jobkorea', label: `${PLATFORM_LABEL.jobkorea} 마이페이지`, url: 'https://www.jobkorea.co.kr' },
   { platform: 'wanted', label: `${PLATFORM_LABEL.wanted} 지원현황`, url: 'https://www.wanted.co.kr/status/applications/applied' },
 ]
