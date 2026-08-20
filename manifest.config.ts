@@ -7,12 +7,18 @@ export default defineManifest((env) => ({
   version: pkg.version,
   // 익스텐션 ID 고정용 공개키 (extension-key.pem에서 추출, 비공개키는 커밋 금지)
   key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwjbQ+wlOc1avVpmoj7lW7RuDOSrYnmkETZu6drwlRj0N9bT3ewkJANADaA9stXG+p0zHyvh5wCh3WrCjysPCz37tGkq8NKuG1/Di3VBvTsXJLBlZSSARIAexoDBUafokkFqwIRGvxGHP4gNM4uuWmaCIWz8sGXOUd48sIP61vQXtMblp46SlRt1qlvKt5Iomc1XZixHrkYZVci9kuF91lnKZ2kfPdPHcy3E4+RlMYbpbcaxMx5fXvezmNvnZ5iKkT3NbgyShv8YpyOYrbg58xkFz5SXFCxFMOoZ3Hx4bs8qFpMcPrvp1fdwwgpix9klQO1g2E2aS8ELnRriigFchSQIDAQAB',
+  // 스토어 심사에는 128px 아이콘이 필수라 16/48/128 세 사이즈를 모두 채워둔다.
+  // 원본 벡터는 public/logo.svg (JOB 워드마크 + 노트북/북마크 아이콘).
   icons: {
-    48: 'public/logo.png',
+    16: 'public/logo-16.png',
+    48: 'public/logo-48.png',
+    128: 'public/logo-128.png',
   },
   action: {
     default_icon: {
-      48: 'public/logo.png',
+      16: 'public/logo-16.png',
+      48: 'public/logo-48.png',
+      128: 'public/logo-128.png',
     },
     default_popup: 'src/popup/index.html',
   },
