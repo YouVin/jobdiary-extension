@@ -23,15 +23,29 @@
 유저가 팝업의 "초기화" 버튼을 누르거나 익스텐션을 삭제하면 함께 삭제됩니다.
 ```
 
-### Host permission (`*.saramin.co.kr`, `jobkorea.co.kr`, `wanted.co.kr`)
+### Host permission
+
+실제 manifest 패턴(`manifest.config.ts`의 `host_permissions` 그대로):
+
+```
+https://*.saramin.co.kr/*
+https://www.jobkorea.co.kr/*
+https://jobkorea.co.kr/*
+https://www.wanted.co.kr/*
+https://wanted.co.kr/*
+```
 
 ```
 유저가 이미 로그인해서 보고 있는 사람인·잡코리아·원티드의 지원현황
 페이지에서, 유저가 익스텐션 팝업의 "지원내역 수집하기" 버튼을 직접 눌렀을
 때만 화면에 표시된 지원 내역(회사명, 공고명, 상태, 지원일 등)을 읽기 위해
-필요합니다. 로그인 세션, 쿠키, 인증 토큰 등 계정 정보에는 접근하지
-않으며, 콘텐츠 스크립트는 각 사이트의 지원현황 페이지 경로에만
-삽입됩니다(예: 사람인은 `/zf_user/persons/apply-status-list*`).
+필요합니다. 로그인 세션, 쿠키, 인증 토큰 등 계정 정보에는 접근하지 않습니다.
+
+위 host_permissions는 크롬 권한 체계상 스킴+호스트 단위로 부여되어 각
+사이트 오리진 전체를 포함하지만, 실제로 코드가 실행되고 데이터를 읽는
+범위는 그보다 좁습니다 — 콘텐츠 스크립트는 각 사이트의 지원현황 페이지
+경로에만 삽입됩니다(예: 사람인은
+`/zf_user/persons/apply-status-list*`, content_scripts.matches 기준).
 ```
 
 ### Remote code
