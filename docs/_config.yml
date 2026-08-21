@@ -1,0 +1,10 @@
+# GitHub Pages는 이 저장소의 docs/ 폴더를 사이트 소스로 쓴다. 다른 기획/내부
+# 문서(ARCHITECTURE.md, INTEGRATION.md 등)는 공개용이 아니므로 사이트 빌드에서
+# 제외하고, 개인정보처리방침만 공개 URL로 노출한다.
+exclude:
+  - ARCHITECTURE.md
+  - INTEGRATION.md
+  - PLANNING.md
+  - SELECTORS.md
+  - STORE_LISTING.md
+  - STORE_PERMISSIONS_JUSTIFICATION.md
