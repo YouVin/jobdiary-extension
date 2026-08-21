@@ -119,8 +119,11 @@ function buildHtml(slide, imgDataUri) {
 
 async function main() {
   const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+  // deviceScaleFactor: 1이어야 실제 PNG 픽셀 크기가 뷰포트(1280x800)와 정확히 일치한다.
+  // 2를 쓰면 스크린샷 파일이 2560x1600으로 저장돼 스토어가 요구하는 정확한 해상도와
+  // 어긋난다.
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
+  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
 
   for (const slide of SLIDES) {
     const rawFile = path.join(RAW_DIR, slide.file);
