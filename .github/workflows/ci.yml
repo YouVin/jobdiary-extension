@@ -29,6 +29,10 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      # 5. 빌드 확인 (CRXJS/Vite 빌드)
+      # 5. 테스트 (vitest)
+      - name: Test
+        run: npm test
+
+      # 6. 빌드 확인 (CRXJS/Vite 빌드)
       - name: Build
         run: npm run build

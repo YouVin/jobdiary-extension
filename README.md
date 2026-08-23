@@ -7,7 +7,7 @@
 취업 준비생이 여러 채용 플랫폼에 흩어진 지원 현황을, 직접 입력하는 수고 없이 [취준일기](https://github.com/YouVin/jobdiary)로 자동 수집합니다.
 
 ![Manifest](https://img.shields.io/badge/Manifest-V3-4F46E5)
-![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-CRXJS-646CFF?logo=vite&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -59,7 +59,7 @@
 |------|------|
 | **표준** | Manifest V3 |
 | **빌드** | Vite + CRXJS |
-| **UI** | React 18 + TypeScript |
+| **UI** | React 19 + TypeScript |
 | **저장** | chrome.storage |
 
 </div>
@@ -139,10 +139,11 @@ jobdiary-extension/
 ## 🗺️ 로드맵
 
 - [x] 지원 현황 페이지 HTML 구조 분석 (3개 사이트)
-- [ ] **M1** · 사람인 지원 내역 수집
-- [ ] **M2** · 취준일기 웹앱 연동
-- [ ] **M3** · 잡코리아 · 원티드 확장
-- [ ] **M4** · 팝업 UI 및 크롬 웹스토어 배포
+- [x] **M1** · 사람인 지원 내역 수집
+- [x] **M2** · 취준일기 웹앱 연동
+- [x] **M3** · 잡코리아 · 원티드 확장 (페이지네이션 포함)
+- [x] **M4** · 팝업 UI 및 크롬 웹스토어 제출 준비 (설명문·개인정보처리방침·스크린샷 준비 완료)
+- [ ] 크롬 웹스토어 심사 제출 및 게시
 
 ---
 
@@ -154,6 +155,9 @@ jobdiary-extension/
 | [셀렉터 명세](./docs/SELECTORS.md) | 사이트별 DOM 셀렉터 및 데이터 매핑 |
 | [아키텍처](./docs/ARCHITECTURE.md) | Manifest V3 구조 및 데이터 흐름 |
 | [웹앱 연동](./docs/INTEGRATION.md) | 취준일기 웹앱과의 데이터 연동 방식 |
+| [스토어 등록 설명문](./docs/STORE_LISTING.md) | 크롬 웹스토어 리스팅용 설명문 |
+| [개인정보처리방침](./docs/PRIVACY_POLICY.md) | 크롬 웹스토어 심사용 개인정보처리방침 |
+| [권한 사용 이유](./docs/STORE_PERMISSIONS_JUSTIFICATION.md) | 스토어 심사용 권한 정당화 |
 
 ---
 
