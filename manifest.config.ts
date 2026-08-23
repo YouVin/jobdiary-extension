@@ -5,8 +5,13 @@ export default defineManifest((env) => ({
   manifest_version: 3,
   name: pkg.name,
   version: pkg.version,
-  // 익스텐션 ID 고정용 공개키 (extension-key.pem에서 추출, 비공개키는 커밋 금지)
-  key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwjbQ+wlOc1avVpmoj7lW7RuDOSrYnmkETZu6drwlRj0N9bT3ewkJANADaA9stXG+p0zHyvh5wCh3WrCjysPCz37tGkq8NKuG1/Di3VBvTsXJLBlZSSARIAexoDBUafokkFqwIRGvxGHP4gNM4uuWmaCIWz8sGXOUd48sIP61vQXtMblp46SlRt1qlvKt5Iomc1XZixHrkYZVci9kuF91lnKZ2kfPdPHcy3E4+RlMYbpbcaxMx5fXvezmNvnZ5iKkT3NbgyShv8YpyOYrbg58xkFz5SXFCxFMOoZ3Hx4bs8qFpMcPrvp1fdwwgpix9klQO1g2E2aS8ELnRriigFchSQIDAQAB',
+  // 익스텐션 ID 고정용 공개키 (extension-key.pem에서 추출, 비공개키는 커밋 금지).
+  // dev 빌드(압축해제 로드)에서만 넣는다 — 크롬 웹스토어 대시보드는 업로드 매니페스트에
+  // key 필드가 있으면 거부한다("key 입력란은 매니페스트에 허용되지 않습니다"). 스토어 배포판은
+  // 최초 업로드 시 스토어가 ID를 직접 부여하므로 프로덕션 빌드에서는 아예 빼야 한다.
+  ...(env.mode === 'production' ? {} : {
+    key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwjbQ+wlOc1avVpmoj7lW7RuDOSrYnmkETZu6drwlRj0N9bT3ewkJANADaA9stXG+p0zHyvh5wCh3WrCjysPCz37tGkq8NKuG1/Di3VBvTsXJLBlZSSARIAexoDBUafokkFqwIRGvxGHP4gNM4uuWmaCIWz8sGXOUd48sIP61vQXtMblp46SlRt1qlvKt5Iomc1XZixHrkYZVci9kuF91lnKZ2kfPdPHcy3E4+RlMYbpbcaxMx5fXvezmNvnZ5iKkT3NbgyShv8YpyOYrbg58xkFz5SXFCxFMOoZ3Hx4bs8qFpMcPrvp1fdwwgpix9klQO1g2E2aS8ELnRriigFchSQIDAQAB',
+  }),
   // 스토어 심사에는 128px 아이콘이 필수라 16/48/128 세 사이즈를 모두 채워둔다.
   // 원본 벡터는 public/logo.svg (JOB 워드마크 + 노트북/북마크 아이콘).
   icons: {
