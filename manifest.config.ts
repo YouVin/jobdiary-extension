@@ -3,7 +3,9 @@ import pkg from './package.json'
 
 export default defineManifest((env) => ({
   manifest_version: 3,
-  name: pkg.name,
+  // package.json name(jobdiary-extension)은 npm 패키지 식별자일 뿐이라 스토어 표시용으로
+  // 쓰지 않는다 — 스토어/크롬 UI에 실제로 노출되는 이름은 이 값이므로 별도로 지정한다.
+  name: '취준일기',
   version: pkg.version,
   // 익스텐션 ID 고정용 공개키 (extension-key.pem에서 추출, 비공개키는 커밋 금지).
   // dev 빌드(압축해제 로드)에서만 넣는다 — 크롬 웹스토어 대시보드는 업로드 매니페스트에
