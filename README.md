@@ -1,16 +1,26 @@
 <div align="center">
 
-# 🧩 취준일기 익스텐션
+<img src="./public/logo-128.png" alt="취준일기 로고" width="72" height="72">
+
+# 취준일기 익스텐션
 
 **사람인 · 원티드 · 잡코리아 지원 내역을 클릭 한 번으로 수집하는 크롬 익스텐션**
 
 취업 준비생이 여러 채용 플랫폼에 흩어진 지원 현황을, 직접 입력하는 수고 없이 [취준일기](https://github.com/YouVin/jobdiary)로 자동 수집합니다.
 
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Live-4F46E5?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/afnboeihbppogfinbickjaaadcgjkmil)
+[![CI](https://github.com/YouVin/jobdiary-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/YouVin/jobdiary-extension/actions/workflows/ci.yml)
 ![Manifest](https://img.shields.io/badge/Manifest-V3-4F46E5)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-CRXJS-646CFF?logo=vite&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
+
+**[⬇️ Chrome 웹스토어에서 설치하기](https://chromewebstore.google.com/detail/afnboeihbppogfinbickjaaadcgjkmil)**
+
+<br>
+
+<img src="./docs/store-screenshots/1-overview.png" alt="취준일기 익스텐션 팝업 미리보기" width="720">
 
 </div>
 
@@ -36,6 +46,19 @@
 | 🗂️ **사이트별 누적 저장** | 다시 수집해도 최신 결과로 덮어써 정리 |
 | 🔍 **중복 지원 감지** | 같은 회사·포지션에 다시 지원한 내역을 취준일기 웹앱이 자동으로 알려줌 |
 | 🔒 **안전한 설계** | 로그인 정보를 수집하지 않으며, 화면에 보이는 데이터만 읽음 |
+
+---
+
+## 📸 스크린샷
+
+<div align="center">
+<table>
+<tr>
+<td align="center" width="50%"><img src="./docs/store-screenshots/2-copy.png" alt="전체 복사로 엑셀·노션에 바로 붙여넣기"></td>
+<td align="center" width="50%"><img src="./docs/store-screenshots/3-start.png" alt="지원현황 페이지에서 버튼 한 번이면 끝"></td>
+</tr>
+</table>
+</div>
 
 ---
 
@@ -84,11 +107,17 @@
 
 ## 🚀 시작하기
 
-### 요구 사항
+### 지금 바로 사용하기
+
+**[Chrome 웹스토어에서 설치](https://chromewebstore.google.com/detail/afnboeihbppogfinbickjaaadcgjkmil)** — 별도 빌드 없이 바로 설치해서 쓸 수 있습니다.
+
+### 개발 환경에서 실행 (기여자용)
+
+**요구 사항**
 - Node.js 18 이상
 - Chrome 브라우저
 
-### 설치 및 실행
+**설치 및 실행**
 
 ```bash
 # 저장소 클론
@@ -143,7 +172,8 @@ jobdiary-extension/
 - [x] **M2** · 취준일기 웹앱 연동
 - [x] **M3** · 잡코리아 · 원티드 확장 (페이지네이션 포함)
 - [x] **M4** · 팝업 UI 및 크롬 웹스토어 제출 준비 (설명문·개인정보처리방침·스크린샷 준비 완료)
-- [ ] 크롬 웹스토어 심사 제출 및 게시
+- [x] **M5** · 유닛 테스트 62개 도입 (vitest + jsdom)
+- [x] **M6** · 크롬 웹스토어 심사 제출 및 [게시](https://chromewebstore.google.com/detail/afnboeihbppogfinbickjaaadcgjkmil) 완료
 
 ---
 
@@ -156,7 +186,7 @@ jobdiary-extension/
 | [아키텍처](./docs/ARCHITECTURE.md) | Manifest V3 구조 및 데이터 흐름 |
 | [웹앱 연동](./docs/INTEGRATION.md) | 취준일기 웹앱과의 데이터 연동 방식 |
 | [스토어 등록 설명문](./docs/STORE_LISTING.md) | 크롬 웹스토어 리스팅용 설명문 |
-| [개인정보처리방침](./docs/PRIVACY_POLICY.md) | 크롬 웹스토어 심사용 개인정보처리방침 |
+| [개인정보처리방침](./docs/PRIVACY_POLICY.md) | 크롬 웹스토어 심사용 개인정보처리방침 (실제 게시본: [GitHub Pages](https://youvin.github.io/jobdiary-extension/privacy/)) |
 | [권한 사용 이유](./docs/STORE_PERMISSIONS_JUSTIFICATION.md) | 스토어 심사용 권한 정당화 |
 
 ---
