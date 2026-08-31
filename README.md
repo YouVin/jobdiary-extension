@@ -62,6 +62,30 @@
 
 ---
 
+## 🖱️ 어디서 수집하나요?
+
+각 사이트의 **지원현황 페이지**에서, 브라우저 툴바의 취준일기 아이콘을 클릭 → 팝업의 "지원내역 수집하기"를 클릭하면 됩니다. (아래 이미지의 회사명·데이터는 예시입니다)
+
+<details>
+<summary><b>사람인</b> — 마이페이지 &gt; 지원내역 &gt; 입사지원 현황</summary>
+<br>
+<img src="./docs/usage-guides/guide-saramin.png" alt="사람인 입사지원 현황 페이지에서 취준일기 아이콘을 클릭하는 방법">
+</details>
+
+<details>
+<summary><b>잡코리아</b> — 마이페이지 &gt; 입사지원 현황</summary>
+<br>
+<img src="./docs/usage-guides/guide-jobkorea.png" alt="잡코리아 입사지원 현황 페이지에서 취준일기 아이콘을 클릭하는 방법">
+</details>
+
+<details>
+<summary><b>원티드</b> — 마이페이지 &gt; 지원 현황</summary>
+<br>
+<img src="./docs/usage-guides/guide-wanted.png" alt="원티드 지원 현황 페이지에서 취준일기 아이콘을 클릭하는 방법">
+</details>
+
+---
+
 ## 🔐 개인정보 및 보안
 
 이 익스텐션은 **사용자의 로그인 정보(아이디·비밀번호)를 절대 수집하거나 전송하지 않습니다.**
