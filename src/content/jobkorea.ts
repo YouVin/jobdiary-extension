@@ -43,6 +43,11 @@ export function parseJobkorea(root: ParentNode = document): ScrapedApplication[]
   const results: ScrapedApplication[] = [];
 
   rows.forEach((row) => {
+    // 잡코리아는 지원 행 다음에 추천공고 목록만 담은 별도 tr을 렌더링한다.
+    // 이 행에도 .company a와 .description a가 있어 구형 형식 fallback에
+    // 걸릴 수 있으므로 지원 내역으로 파싱하지 않는다.
+    if (row.querySelector(JOBKOREA_SELECTORS.similarRecommendations)) return;
+
     const dataButton = row.querySelector<HTMLElement>(JOBKOREA_SELECTORS.dataButton);
     // url/viewed는 버튼 유무와 무관하게 행 본문에서 읽는다(두 형식 모두 동일 위치).
     const href = row.querySelector<HTMLAnchorElement>(JOBKOREA_SELECTORS.url)?.getAttribute('href');

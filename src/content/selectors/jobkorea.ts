@@ -1,6 +1,8 @@
 export const JOBKOREA_SELECTORS = {
   // 컨테이너: 테이블의 각 행 (tr)
   container: 'tbody tr',
+  // 지원 행 바로 다음에 추천공고만 담긴 tr을 제외하기 위한 래퍼
+  similarRecommendations: '.similar',
   // 데이터 버튼: 각 행에서 data 속성을 담은 버튼 (devBtnDel 또는 devBtnCancel).
   // 이 버튼이 없는 행(빈 tr, 헤더 등)은 지원내역이 아니므로 스킵한다.
   dataButton: '[data-applydate]',

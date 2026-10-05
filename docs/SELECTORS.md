@@ -109,6 +109,7 @@ document.querySelectorAll(".row._apply_list").forEach((row) => {
 - **지원일은 텍스트보다 `data-applydate`가 안정적**: `.item.date` 텍스트는 "2026.06.13 00:43"처럼 시분이 있는 것도 있고 "2026.06.01"처럼 없는 것도 있어 들쭉날쭉하다. `data-applydate`는 항상 14자리 "20260601235538"(YYYYMMDDHHmmss) 풀 포맷이므로 이걸 파싱해 `YYYY.MM.DD HH:mm`으로 변환해 쓴다.
 - **회사명 원본 데이터가 깨진 사례 있음**: 예) `data-memname="아타드㈜(ATAD Corp."` 처럼 여는 괄호만 있고 닫는 괄호가 없는 경우가 있다. 잡코리아 원본 DB 이슈로 우리가 고칠 수 없으니 원문 그대로 저장한다.
 - **오래된 지원(`.devBtnOldDel` 등)은 버튼 data가 없어 본문 텍스트로 폴백**: 최신 지원은 `.devBtnDel`/`.devBtnCancel` 버튼에 `memname`/`gititle`/`applydate`/`idx`가 다 있지만, 오래된 지원은 `.devBtnOldDel` 버튼에 `data-idx`/`data-year`만 있고 `memname`/`gititle`/`applydate`가 없다. `[data-applydate]`로 필터하면(위 항목) 이 행들이 전부 스킵돼 지원 건수가 실제보다 적게 잡힌다. `[data-applydate]`가 없으면 회사명은 `.company a`, 공고명은 `.description a`, 지원일은 `.apply-status .date` 텍스트로 대신 읽는다. externalId는 오래된 버튼의 `data-idx`를 그대로 쓴다(최신 행과 같은 기준). 공고 자체가 삭제된 행(`<td colspan="2">삭제된 채용공고입니다.</td>`처럼 진행상태 칸이 합쳐짐)도 `.company`/`.description`은 본문에 남아있어 같은 폴백으로 수집된다.
+- **유사 추천공고 행은 지원 행이 아님**: 실제 지원 `<tr>` 바로 다음에 `<td colspan="4"><div class="similar">…</div></td>`만 담은 `<tr>`이 추가된다. 추천 `<li>` 안에도 `.company a`와 `.description a`가 있어 회사명만 확인하는 구형 형식 폴백이 이 행을 지원 내역으로 오인할 수 있으므로 `.similar`를 포함한 행은 건너뛴다.
 
 ### 셀렉터
 
