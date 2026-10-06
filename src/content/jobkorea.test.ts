@@ -68,6 +68,65 @@ describe('parseJobkorea', () => {
     expect(parseJobkorea(root)).toEqual([]);
   });
 
+  it('지원 내역 다음 행의 유사 추천공고는 최신·구형 형식 지원 건수에 포함하지 않는다', () => {
+    const root = fixture(`
+      <table><tbody>
+        <tr>
+          <td class="apply-status" rowspan="2">
+            <span class="item status">지원완료</span>
+            <span class="date">2026.10.05</span>
+          </td>
+          <td class="company"><a href="/Recruit/Co_Read/C/1">최신 지원 회사</a></td>
+          <td class="description"><a href="/Recruit/GI_Read/100">최신 지원 공고</a></td>
+          <td><button data-memname="최신 지원 회사" data-gititle="최신 지원 공고" data-applydate="20261005171818" data-idx="9002">지원취소</button></td>
+        </tr>
+        <tr>
+          <td colspan="4">
+            <div class="similar">
+              <ul class="similar-list">
+                <li class="listItem">
+                  <div class="company"><a href="/Recruit/Co_Read/C/2">추천 회사 1</a></div>
+                  <div class="description"><a href="/Recruit/GI_Read/200" data-gno="200">추천 공고 1</a></div>
+                </li>
+                <li class="listItem">
+                  <div class="company"><a href="/Recruit/Co_Read/C/3">추천 회사 2</a></div>
+                  <div class="description"><a href="/Recruit/GI_Read/300" data-gno="300">추천 공고 2</a></div>
+                </li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="apply-status" rowspan="2">
+            <span class="item status">지원완료</span>
+            <span class="date">2026.10.01</span>
+          </td>
+          <td class="company"><a href="/Recruit/Co_Read/C/4">구형 지원 회사</a></td>
+          <td class="description"><a href="/Recruit/GI_Read/400">구형 지원 공고</a></td>
+          <td><button class="devBtnOldDel" data-idx="8002">지원취소</button></td>
+        </tr>
+        <tr>
+          <td colspan="4">
+            <div class="similar">
+              <ul class="similar-list">
+                <li class="listItem">
+                  <div class="company"><a href="/Recruit/Co_Read/C/5">구형 추천 회사</a></div>
+                  <div class="description"><a href="/Recruit/GI_Read/500" data-gno="500">구형 추천 공고</a></div>
+                </li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+      </tbody></table>
+    `);
+
+    const rows = parseJobkorea(root);
+
+    expect(rows).toHaveLength(2);
+    expect(rows.map(row => row.company)).toEqual(['최신 지원 회사', '구형 지원 회사']);
+    expect(rows.map(row => row.externalId)).toEqual(['9002', '8002']);
+  });
+
   it('회사명 원본 데이터가 깨져 있어도(괄호 불일치 등) 원문 그대로 저장한다', () => {
     const root = fixture(`
       <table><tbody>
