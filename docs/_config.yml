@@ -1,7 +1,10 @@
 # GitHub Pages는 이 저장소의 docs/ 폴더를 사이트 소스로 쓴다. 다른 기획/내부
 # 문서(ARCHITECTURE.md, INTEGRATION.md 등)는 공개용이 아니므로 사이트 빌드에서
-# 제외하고, 개인정보처리방침만 공개 URL로 노출한다.
+# 제외하고, 소개 페이지와 개인정보처리방침을 공개 URL로 노출한다.
+url: https://youvin.github.io
+baseurl: /jobdiary-extension
 exclude:
+  - RELEASE_1.0.3.md
   - ARCHITECTURE.md
   - INTEGRATION.md
   - PLANNING.md
