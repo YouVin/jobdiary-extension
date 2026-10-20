@@ -1,13 +1,14 @@
 import type { Platform } from '@/types/application'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isConnectionError, waitForTabComplete } from '@/lib/collectRecovery'
 import { copyRichText } from '@/lib/clipboard'
 import { COLLECT_MESSAGE_TYPE, type CollectMessage, type CollectResponse } from '@/lib/messages'
 import { detectPlatform } from '@/lib/platformDetect'
-import { clearAll, getAllApplications, getSiteCounts } from '@/lib/storage'
+import { clearAll, getAllApplications } from '@/lib/storage'
 import { applicationsToHtml, applicationsToTsv } from '@/lib/tsv'
 import { Button } from './components/Button'
 import { PLATFORM_LABEL, PlatformBadge } from './components/PlatformBadge'
+import { useSiteCounts } from './useSiteCounts'
 
 const UNSUPPORTED_MESSAGE = '지원현황 페이지에서 눌러주세요'
 const COLLECT_FAILED_MESSAGE = '수집에 실패했어요. 새로고침 후 다시 시도해 주세요'
@@ -25,7 +26,6 @@ const SITE_APPLY_STATUS_LINKS: Array<{ platform: Platform, label: string, url: s
 ]
 
 const PLATFORM_ORDER: Platform[] = ['saramin', 'jobkorea', 'wanted']
-const EMPTY_COUNTS: Record<Platform, number> = { saramin: 0, jobkorea: 0, wanted: 0 }
 const RECOVERY_TIMEOUT_MS = 5000
 const RECOVERY_RETRY_ATTEMPTS = 3
 const RECOVERY_RETRY_INTERVAL_MS = 300
@@ -84,9 +84,19 @@ export function App() {
   const [platform, setPlatform] = useState<Platform | undefined>(undefined)
   const [collectState, setCollectState] = useState<CollectState>({ status: 'idle' })
   const [copyState, setCopyState] = useState<CopyState>('idle')
-  const [siteCounts, setSiteCounts] = useState<Record<Platform, number>>(EMPTY_COUNTS)
+  const { state: countsState, refresh: refreshSiteCounts } = useSiteCounts()
   const [resetConfirming, setResetConfirming] = useState(false)
   const [recovering, setRecovering] = useState(false)
+  const [platformLoading, setPlatformLoading] = useState(true)
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState(false)
+  const copyTimer = useRef<number | undefined>(undefined)
+  const resetTimer = useRef<number | undefined>(undefined)
+
+  useEffect(() => () => {
+    window.clearTimeout(copyTimer.current)
+    window.clearTimeout(resetTimer.current)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -96,6 +106,8 @@ export function App() {
       setPlatform(detectPlatform(tab?.url))
     }).catch(() => {
       if (!cancelled) setPlatform(undefined)
+    }).finally(() => {
+      if (!cancelled) setPlatformLoading(false)
     })
 
     return () => {
@@ -103,24 +115,10 @@ export function App() {
     }
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-
-    getSiteCounts().then((counts) => {
-      if (!cancelled) setSiteCounts(counts)
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const totalCount = PLATFORM_ORDER.reduce((sum, p) => sum + siteCounts[p], 0)
+  const totalCount = countsState.status === 'ready'
+    ? PLATFORM_ORDER.reduce((sum, p) => sum + countsState.counts[p], 0)
+    : 0
   const hasAnyData = totalCount > 0
-
-  async function refreshSiteCounts() {
-    setSiteCounts(await getSiteCounts())
-  }
 
   async function handleCollect() {
     setCopyState('idle')
@@ -197,6 +195,7 @@ export function App() {
   }
 
   async function handleCopyAll() {
+    window.clearTimeout(copyTimer.current)
     try {
       const applications = await getAllApplications()
       await copyRichText(applicationsToTsv(applications), applicationsToHtml(applications))
@@ -206,7 +205,7 @@ export function App() {
       setCopyState('error')
     }
 
-    window.setTimeout(() => setCopyState('idle'), 2000)
+    copyTimer.current = window.setTimeout(() => setCopyState('idle'), 2000)
   }
 
   function handleOpenJobdiary() {
@@ -215,17 +214,29 @@ export function App() {
   }
 
   async function handleReset() {
+    setResetError(false)
     if (!resetConfirming) {
       setResetConfirming(true)
-      window.setTimeout(() => setResetConfirming(false), 3000)
+      window.clearTimeout(resetTimer.current)
+      resetTimer.current = window.setTimeout(() => setResetConfirming(false), 3000)
       return
     }
 
-    await clearAll()
-    await refreshSiteCounts()
-    setResetConfirming(false)
-    setCopyState('idle')
-    setCollectState({ status: 'idle' })
+    window.clearTimeout(resetTimer.current)
+    setResetting(true)
+    try {
+      await clearAll()
+      await refreshSiteCounts()
+      setCopyState('idle')
+      setCollectState({ status: 'idle' })
+    }
+    catch {
+      setResetError(true)
+    }
+    finally {
+      setResetConfirming(false)
+      setResetting(false)
+    }
   }
 
   return (
@@ -236,97 +247,108 @@ export function App() {
       </header>
 
       <section className="border-b border-card-border bg-column px-4 py-3">
-        <PlatformBadge platform={platform} />
+        {platformLoading ? <p className="text-sm text-text-muted">현재 페이지 확인 중…</p> : <PlatformBadge platform={platform} />}
       </section>
 
       <section className="flex flex-col gap-2 border-b border-card-border px-4 py-3">
         <Button
           variant="primary"
           onClick={handleCollect}
-          disabled={collectState.status === 'loading'}
+          disabled={platformLoading || resetting || collectState.status === 'loading'}
         >
           {collectState.status === 'loading' ? '수집 중...' : '지원내역 수집하기'}
         </Button>
-        {collectState.status === 'success' && (
-          <>
-            <p className="text-sm text-text-muted">
-              {collectState.count}
-              건 수집됨
-            </p>
-            {collectState.truncated && (
-              <p className="text-sm text-status-rejected">{TRUNCATED_MESSAGE}</p>
-            )}
-          </>
-        )}
-        {collectState.status === 'empty' && (
-          <>
-            <p className="text-sm text-text-muted">{EMPTY_RESULT_MESSAGE}</p>
-            {collectState.truncated && (
-              <p className="text-sm text-status-rejected">{TRUNCATED_MESSAGE}</p>
-            )}
-          </>
-        )}
-        {collectState.status === 'unsupported' && (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-text-secondary">{UNSUPPORTED_MESSAGE}</p>
-            <div className="flex flex-col gap-0.5">
-              {SITE_APPLY_STATUS_LINKS.map(link => (
-                <button
-                  key={link.platform}
-                  type="button"
-                  onClick={() => chrome.tabs.create({ url: link.url })}
-                  className="text-left text-sm text-brand hover:text-brand-hover hover:underline"
-                >
-                  {link.label}
-                  {' '}
-                  바로가기
-                </button>
-              ))}
+        <div role="status" aria-atomic="true">
+          {collectState.status === 'success' && (
+            <>
+              <p className="text-sm text-text-muted">
+                {collectState.count}
+                건 수집됨
+              </p>
+              {collectState.truncated && (
+                <p className="text-sm text-status-rejected">{TRUNCATED_MESSAGE}</p>
+              )}
+            </>
+          )}
+          {collectState.status === 'empty' && (
+            <>
+              <p className="text-sm text-text-muted">{EMPTY_RESULT_MESSAGE}</p>
+              {collectState.truncated && (
+                <p className="text-sm text-status-rejected">{TRUNCATED_MESSAGE}</p>
+              )}
+            </>
+          )}
+          {collectState.status === 'unsupported' && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-text-secondary">{UNSUPPORTED_MESSAGE}</p>
+              <div className="flex flex-col gap-0.5">
+                {SITE_APPLY_STATUS_LINKS.map(link => (
+                  <button
+                    key={link.platform}
+                    type="button"
+                    onClick={() => chrome.tabs.create({ url: link.url })}
+                    className="text-left text-sm text-brand hover:text-brand-hover hover:underline"
+                  >
+                    {link.label}
+                    {' '}
+                    바로가기
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-        {collectState.status === 'error' && (
-          <p className="text-sm text-status-rejected">{COLLECT_FAILED_MESSAGE}</p>
-        )}
-        {collectState.status === 'busy' && (
-          <p className="text-sm text-text-muted">{BUSY_MESSAGE}</p>
-        )}
-        {collectState.status === 'loading' && (
-          <p className="text-sm text-text-muted">
-            {recovering ? '페이지를 준비하는 중...' : '수집하는 중이에요…'}
-          </p>
-        )}
+          )}
+          {collectState.status === 'error' && (
+            <p className="text-sm text-status-rejected">{COLLECT_FAILED_MESSAGE}</p>
+          )}
+          {collectState.status === 'busy' && (
+            <p className="text-sm text-text-muted">{BUSY_MESSAGE}</p>
+          )}
+          {collectState.status === 'loading' && (
+            <p className="text-sm text-text-muted">
+              {recovering ? '페이지를 준비하는 중...' : '수집하는 중이에요…'}
+            </p>
+          )}
+        </div>
       </section>
 
-      <section className="border-b border-card-border px-4 py-3">
-        <p className="mb-2 text-sm font-medium text-text-primary">
-          전체
-          {' '}
-          {totalCount}
-          건
-        </p>
-        <ul className="flex flex-col gap-1">
-          {PLATFORM_ORDER.map(p => (
-            <li key={p} className="flex items-center justify-between text-sm text-text-secondary">
-              <span>{PLATFORM_LABEL[p]}</span>
-              <span>
-                {siteCounts[p]}
-                건
-              </span>
-            </li>
-          ))}
-        </ul>
+      <section className="border-b border-card-border px-4 py-3" aria-label="저장된 지원내역" aria-busy={countsState.status === 'loading'}>
+        <div role="status" aria-atomic="true">
+          {countsState.status === 'loading' && <p className="text-sm text-text-muted">저장 내역 불러오는 중…</p>}
+          {countsState.status === 'error' && <p className="text-sm text-status-rejected">저장 내역을 불러오지 못했어요.</p>}
+        </div>
+        {countsState.status === 'error' && <Button variant="secondary" onClick={() => void refreshSiteCounts()}>다시 불러오기</Button>}
+        {countsState.status === 'ready' && <>
+          <p className="mb-2 text-sm font-medium text-text-primary">
+            전체
+            {' '}
+            {totalCount}
+            건
+          </p>
+          <ul className="flex flex-col gap-1">
+            {PLATFORM_ORDER.map(p => (
+              <li key={p} className="flex items-center justify-between text-sm text-text-secondary">
+                <span>{PLATFORM_LABEL[p]}</span>
+                <span>
+                  {countsState.counts[p]}
+                  건
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>}
       </section>
 
       <section className="flex flex-col gap-2 border-b border-card-border px-4 py-3">
-        <Button variant="secondary" onClick={handleCopyAll} disabled={!hasAnyData}>
+        <Button variant="secondary" onClick={handleCopyAll} disabled={!hasAnyData || resetting}>
           {COPY_BUTTON_LABEL[copyState]}
         </Button>
         {hasAnyData && (
-          <Button variant="secondary" onClick={handleReset} className="text-status-rejected!">
-            {resetConfirming ? '정말요? 다시 누르면 전체 삭제' : '초기화'}
+          <Button variant="secondary" onClick={handleReset} disabled={resetting || collectState.status === 'loading'} className="text-status-rejected!">
+            {resetting ? '초기화 중…' : resetConfirming ? '정말요? 다시 누르면 전체 삭제' : '초기화'}
           </Button>
         )}
+        <p role="status" aria-atomic="true" className="sr-only">{copyState === 'idle' ? '' : COPY_BUTTON_LABEL[copyState]}</p>
+        <p role="alert" className="text-sm text-status-rejected">{resetError ? '초기화하지 못했어요. 다시 시도해 주세요.' : ''}</p>
       </section>
 
       <section className="px-4 py-3">
