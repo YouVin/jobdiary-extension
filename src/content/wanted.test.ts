@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { parseWanted } from './wanted';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { clickPaginationButtonAndWait, parseWanted } from './wanted';
+import { WANTED_PAGINATION_SELECTORS } from './selectors/wanted';
 
 function fixture(html: string): HTMLDivElement {
   const container = document.createElement('div');
@@ -66,5 +67,70 @@ describe('parseWanted', () => {
 
   it('행이 없으면 빈 배열을 반환한다', () => {
     expect(parseWanted(fixture('<ul></ul>'))).toEqual([]);
+  });
+});
+
+describe('원티드 페이지 전환 대기', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+    vi.useRealTimers();
+  });
+
+  function setup() {
+    vi.useFakeTimers();
+    document.body.innerHTML = `
+      <button data-role="pagination-next-button">다음</button>
+      <button data-role="pagination-item-page" aria-current="page">1</button>
+      <ul><li class="table_tr"><span class="td_company_name">이전 회사</span></li></ul>`;
+    return {
+      page: document.querySelector(WANTED_PAGINATION_SELECTORS.activePage)!,
+      list: document.querySelector('ul')!,
+    };
+  }
+
+  it('페이지 번호만 바뀌면 기다리고 실제 목록이 바뀐 뒤 완료한다', async () => {
+    const { page, list } = setup();
+    const done = vi.fn();
+    const pending = clickPaginationButtonAndWait(WANTED_PAGINATION_SELECTORS.nextButton).then(done);
+    page.textContent = '2';
+    await vi.advanceTimersByTimeAsync(600);
+    expect(done).not.toHaveBeenCalled();
+    list.innerHTML = '';
+    await vi.advanceTimersByTimeAsync(300);
+    expect(done).not.toHaveBeenCalled();
+    list.innerHTML = '<li class="table_tr"><span class="td_company_name">다음 회사</span></li>';
+    await vi.advanceTimersByTimeAsync(150);
+    await pending;
+    expect(done).toHaveBeenCalledWith('moved');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('목록만 바뀌고 페이지 번호가 그대로라면 완료로 처리하지 않는다', async () => {
+    const { list } = setup();
+    const pending = clickPaginationButtonAndWait(WANTED_PAGINATION_SELECTORS.nextButton);
+    list.innerHTML = '<li class="table_tr"><span class="td_company_name">다음 회사</span></li>';
+    await vi.advanceTimersByTimeAsync(4200);
+    expect(await pending).toBe('timeout');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('페이지 번호가 바뀌어도 이전 목록이 남아 있으면 timeout 처리한다', async () => {
+    const { page } = setup();
+    const pending = clickPaginationButtonAndWait(WANTED_PAGINATION_SELECTORS.nextButton);
+    page.textContent = '2';
+    await vi.advanceTimersByTimeAsync(4200);
+    expect(await pending).toBe('timeout');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('마지막 페이지의 비활성 버튼은 클릭하지 않는다', async () => {
+    setup();
+    const button = document.querySelector<HTMLButtonElement>(WANTED_PAGINATION_SELECTORS.nextButton)!;
+    button.disabled = true;
+    const clicked = vi.fn();
+    button.addEventListener('click', clicked);
+    expect(await clickPaginationButtonAndWait(WANTED_PAGINATION_SELECTORS.nextButton)).toBe('no-next');
+    expect(clicked).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

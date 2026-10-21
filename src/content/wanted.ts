@@ -52,18 +52,19 @@ function isPaginationButtonDisabled(button: Element): boolean {
   return button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true';
 }
 
-// buttonSelector(다음/이전 페이지 버튼)를 클릭하고, 활성 페이지 번호가 바뀔 때까지(React
-// 리렌더 완료 신호로 씀) 짧게 폴링해서 기다린다. 버튼이 없거나 비활성이면 'no-next'(정상 —
+// buttonSelector(다음/이전 페이지 버튼)를 클릭하고, 활성 페이지 번호와 실제 목록이
+// 모두 바뀔 때까지 짧게 폴링해서 기다린다. 버튼이 없거나 비활성이면 'no-next'(정상 —
 // 그 방향으로 더 갈 페이지가 없음). 클릭 후 시간 안에 페이지 번호가 안 바뀌면 'timeout'(렌더
 // 실패 등 이상 상황 — 더 있을 수 있는데 못 넘어간 것이라 정상 종료와 구분해야 한다).
 // 성공하면 'moved'.
 type PageMoveResult = 'moved' | 'no-next' | 'timeout';
 
-async function clickPaginationButtonAndWait(buttonSelector: string, timeoutMs = 4000, intervalMs = 150): Promise<PageMoveResult> {
+export async function clickPaginationButtonAndWait(buttonSelector: string, timeoutMs = 4000, intervalMs = 150): Promise<PageMoveResult> {
   const button = document.querySelector<HTMLButtonElement>(buttonSelector);
   if (!button || isPaginationButtonDisabled(button)) return 'no-next';
 
   const prevLabel = getActivePageLabel();
+  const prevRowsKey = rowSetKey(parseWanted(document), buildRowKey);
   button.click();
 
   const startedAt = Date.now();
@@ -71,9 +72,14 @@ async function clickPaginationButtonAndWait(buttonSelector: string, timeoutMs = 
     const timer = setInterval(() => {
       const currentLabel = getActivePageLabel();
       if (currentLabel !== null && currentLabel !== prevLabel) {
-        clearInterval(timer);
-        resolve('moved');
-        return;
+        const rows = parseWanted(document);
+        // 페이지 번호가 먼저 바뀌거나 로딩 중 행이 잠시 사라져도 이전/빈 목록을
+        // 수집하지 않는다. 갱신을 확인할 수 없으면 timeout → truncated로 알린다.
+        if (rows.length > 0 && rowSetKey(rows, buildRowKey) !== prevRowsKey) {
+          clearInterval(timer);
+          resolve('moved');
+          return;
+        }
       }
       if (Date.now() - startedAt >= timeoutMs) {
         clearInterval(timer);
@@ -153,6 +159,7 @@ registerCollectHandler('wanted', async () => {
   if (!container) return { rows: [], truncated: true };
 
   const movedToFirstPage = await goToFirstPage();
+  if (!movedToFirstPage) throw new Error('원티드 첫 페이지의 목록 갱신을 확인하지 못했습니다.');
   const { rows, truncated } = await collectWantedAllPages();
-  return { rows, truncated: truncated || !movedToFirstPage };
+  return { rows, truncated };
 });

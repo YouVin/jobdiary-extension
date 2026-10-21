@@ -74,7 +74,8 @@ jobdiary-extension/
 | content/{site}.ts | 해당 사이트에서 파싱 실행, 버튼 삽입 |
 | content/selectors/ | 사이트별 셀렉터 상수 (깨지면 여기만 수정) |
 | background/index.ts | 메시지 수신, chrome.storage 저장·전달 (Application 변환을 이 단계에서 할지는 미확정 — INTEGRATION.md 참고). 중복 판별은 하지 않음 — 웹앱 전담 |
-| popup/App.tsx | 수집 현황 표시, 웹앱 열기 |
+| popup/App.tsx | 수집·복사·초기화·웹앱 열기, 로딩/오류 안내 및 접근성 상태 메시지 |
+| popup/useSiteCounts.ts | 저장 현황 조회와 local 저장소 변경 구독. 늦은 응답 무시 및 팝업 종료 시 구독 해제 |
 | lib/statusMapping.ts | "지원완료" → applied, "취소" 포함 → canceled 등 |
 | lib/dateNormalize.ts | 각 사이트 날짜 → 자정 기준 ISO (시분 버림) |
 | lib/storage.ts | chrome.storage.local 사이트별 슬롯(saramin/jobkorea/wanted) 누적 저장·조회. 재수집 시 해당 슬롯만 덮어씀, "초기화" 버튼 호출 시에만 전체 비움 |
